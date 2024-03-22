@@ -42,7 +42,7 @@
 \maketitle
 
 \begin{abstract}
-  Crowdsourcing has emerged as a pivotal paradigm for harnessing collective intelligence to solve data annotation tasks. Effective label aggregation, crucial for leveraging the diverse judgments of contributors, remains a fundamental challenge in crowdsourcing systems. This paper introduces a novel label aggregation strategy based on Shapley values, a concept originating from cooperative game theory. By integrating Shapley values as worker weights into the Weighted Majority Vote label aggregation (WMV), our proposed framework aims to address the interpretability of weights assigned to workers. This aggregation reduces the complexity of probabilistic models and the difficulty of the final interpretation of the aggregation from the workers' votes. We show improved accuracy against other WMV-based label aggregation strategies. We demonstrate the efficiency of our strategy on various real datasets and semi-simulated ones to explore multiple crowdsourcing scenarios.
+  Crowdsourcing has emerged as a pivotal paradigm for harnessing collective intelligence to solve data annotation tasks. Effective label aggregation, crucial for leveraging the diverse judgments of contributors, remains a fundamental challenge in crowdsourcing systems. This paper introduces a novel label aggregation strategy based on Shapley values, a concept originating from cooperative game theory. By integrating Shapley values as worker weights into the Weighted Majority Vote label aggregation (WMV), our proposed framework aims to address the interpretability of weights assigned to workers. This aggregation reduces the complexity of probabilistic models and the difficulty of the final interpretation of the aggregation from the workers' votes. We show improved accuracy against other WMV-based label aggregation strategies. We demonstrate the efficiency of our strategy on various real datasets to explore multiple crowdsourcing scenarios.
 \medskip
 
 \keywords{crowdsourcing, explainability, label aggregation, Shapley values}
@@ -105,8 +105,8 @@ In this work, we focus on label aggregation strategies as weighted Majority Vote
   \label{eq:wmv_general}
   \hat{y}_i = \text{WMV}(i, W):=\argmax_{k \in [K]} \sum_{j\in\mathcal{A}(x_i)} w_{j,k} \mathds{1}(y_i^{(j)} = k),
 \end{equation}
-where $W \in \mathbb{R}_+^{[n_\text{worker}]\times [K]}$ is the matrix assiging the weight of worker $j$ for their answer given a class $k$.
-We denote $w_{j,k}>0$ the weight of worker $j$ for class $k$.
+where $W \in \mathbb{R}^{[n_\text{worker}]\times [K]}$ is the matrix assiging the weight of worker $j$ for their answer given a class $k$.
+We denote $w_{j,k}\in\mathbb{R}$ the weight of worker $j$ for class $k$.
 This weight matrix is the cornerstone of each aggregation strategy.
 
 Let us detail existing label aggregation strategies that fit into this framework.
@@ -131,7 +131,7 @@ Let us detail existing label aggregation strategies that fit into this framework
         \State \textbf{Input:} $\eta>0$ the learning rate, $t_{\max}>0$ maximum number of iterations,
       \State Initialize weights at step $0$: $W^0=\frac{1}{K} \mathbf{1}_{n_\text{worker}\times K}$.
         \For{$t=1,\dots, t_{\max}$}
-            \State Update labels: $\hat{y}_i^{t} = \mathrm{WMV}(i, W^{t-1})$ for $i\in [n\text{task}]$
+            \State Update labels: $\hat{y}_i^{t} = \mathrm{WMV}(i, W^{t-1})$ for $i\in [n_\text{task}]$
             \State Compute current accuracy by worker: $a_j =\left(\frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_i^t\right)\right)\mathbf{1}_K$
             \State Update weights for each worker $j\in [n_\text{worker}]$: $W^t_{j,:} = W^{t-1}_{j, :} - \eta (W^{t-1}_{j,:}-a_j)$
         \EndFor
@@ -147,9 +147,9 @@ Let us detail existing label aggregation strategies that fit into this framework
     \hat{y}_i^\text{WDS}= \mathrm{WMV}\left(i, W\right),\quad
     \text{with}\quad w_{j,k} = \pi^{(j)}_{k,k}\enspace.
   \end{equation}
-  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of each worker $j$ as a vector $s^j\in\mathbb{R}^K_+$. Each entry $s^j_k$ represents the probability of the worker answering the label $k\in[K]$ correctly.
+  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of all workers as a vector $s\in\mathbb{R}^{n_\text{worker}}$. Each entry $s_j$ represents the probability of the worker $j$ of answering correctly.
   This problem can be formulated as a rank-one matrix completion problem per worker defined as:
-  \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=s^j(s^j)^\top \enspace,\]
+  \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=ss^\top \enspace,\]
   where $C$ is the covariance matrix of the workers' answers.
   The final label is a weighted majority vote written:
   \begin{equation}
@@ -181,6 +181,14 @@ Let us detail existing label aggregation strategies that fit into this framework
 \end{itemize}
 Note that depending on the strategy, the weights $w_{j,k}$ might not be upper-bounded. Indeed, in WAWA as the weight is the accuracy, it is at most $1$. However, KOS strategy does not have an upper bound on the weights.
 If the weights are not upper-bounded, the more a worker answers following other workers, the more weight they will accumulate. This kind of strategy rewards engagement.
+In \Cref{fig:weights_by_strat} we show how each strategy leads to different weights and scalings. The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sec:results}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../matrix_weights_bluebirds_workers.pdf}
+  \caption{Example of weights obtained for the BlueBirds dataset using the presented.}
+  \label{fig:weights_by_strat}
+\end{figure}
 
 \section{Shapley label aggregation for crowdsourcing}
 \label{sec:shapagg}
@@ -233,6 +241,8 @@ The contribution of a worker $j_0\in[n_\text{worker}]$ on a single task $i_0\in 
 
 First, note that in \Cref{alg:shap} the participation of each worker is linked to their total contribution. There is no upper bound on the skill estimation with $\mathrm{contrib}$ as we value a worker who answers multiple times.
 However, if they answer many labels randomly, their Shapley value is close to zero and their total contribution is low.
+As it can be seen in \Cref{fig:weights_by_strat}, as the Shapley values can be used for feature importance in prediction, it can also identify which workers are the most important for the final label aggregation and could be the center of more analysis.
+And, at the same time, it can identify which workers are not contributing to the final label.
 
 \subsection{Implementation}
 \label{sub:implementation}
@@ -293,17 +303,17 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
   \end{tabular}
   }
   \end{table}
-\subsection{Performance varying the number of workers}
+% \subsection{Performance varying the number of workers}
 
-From the real datasets, we can explore how the number of workers impacts the performance of the different label aggregation strategies.
-To do so, given a dataset, we randomly choose the same subset of $5$ workers for the label aggregation strategies.
-Then, we add workers one by one, chosen uniformly at random, and evaluate the accuracy and F1 score of the label aggregation strategies with the new set of workers.
+% From the real datasets, we can explore how the number of workers impacts the performance of the different label aggregation strategies.
+% To do so, given a dataset, we randomly choose the same subset of $5$ workers for the label aggregation strategies.
+% Then, we add workers one by one, chosen uniformly at random, and evaluate the accuracy and F1 score of the label aggregation strategies with the new set of workers.
 
 
 
 \subsection{More information on workers}
 
-\begin{figure}[tbh]
+\begin{figure}[htb]
   \centering
   \includegraphics[width=\textwidth]{./../summary_plot_shap_all_bluebirds.pdf}
   \caption{Summary of the main contributing workers for the BlueBirds dataset using Shapley values. Left: Worker $0$ has the highest contribution to the final label -- either for class $0$ or $1$, followed by worker $15$. Then, worker $36$ has better identification for class $1$ than class $0$. Right: Average impact of each worker on the final predicted label by the XGBOOST classifier. This worker's contribution scalar value -- used in \Cref{alg:shap} weight $w(j, \cdot)$ -- does not allow to differentiate between classes.}
