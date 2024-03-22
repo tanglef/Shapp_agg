@@ -94,7 +94,7 @@ On released datasets, to compute performance metrics, partial true labels are ma
 We denote $\mathcal{D}_\texttt{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\texttt{test}$ the set of tasks with known true labels. Note that these true labels are only used at test time.
 Both workers and aggregation strategies do not have access to the true labels. Their goal is to recover it.
 
-The impact of a worker is evaluated by a value function $\nu:2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\texttt{worker}]$ and any worker $j_0\notin S$, $\nu(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. Note that in a classification setting with probability output, the value function is the probability given to the predicted label.
+The impact of a worker is evaluated by a value function $\nu:2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\texttt{worker}]$ and any worker $j_0\notin S$, $\nu(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. Note that in a classification setting with probability output, the value function is the score given to the predicted label. This score is then converted to a probability using a softmax function.
 
 \paragraph{Existing weighted label aggregation strategies.}
 
@@ -206,23 +206,24 @@ In the context of crowdsourcing, we propose to use Shapley values to quantify th
 We first recall the definition of a Shapley value.
 
 % XXX might be easier to instantiate in your context with: $T=[n_\texttt{worker}]$. One letter spared. and T could be silent.
-
+% Done
 % XXX Instantiate here  the $\nu$ function we are going to use next "-- for example the prediction score of a classifier -- " so you can silence the $\nu$ in the definition of the Shapley value.
 % XXX why not only using $\phi_j(i)$ since $T$ and $\nu$ will be fixed
 
 \begin{definition}
-Given a set of workers $T$ with $n_\texttt{worker}$, and a value function $\nu(\cdot): 2^T\rightarrow \mathbb{R}$ the Shapley value of a worker $j$ for a task $i$ is defined as the average marginal contribution of the worker $j$ to every subset of $T\setminus\{j\}$:
+Given a set of $n_\texttt{worker}$ workers, and a value function $\nu(\cdot): 2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$ the Shapley value of a worker $j$ for a task $i$ is defined as the average marginal contribution of the worker $j$ to every subset of $[n_\texttt{worker}]\setminus\{j\}$:
 \begin{equation}
-  \phi_j(i, T, \nu) = \sum_{S\subseteq T\setminus\{j\}} \frac{|S|!(n-|S|-1)!}{n!} \left[\nu(S\cup\{j\}) - \nu(S)\right]\enspace.
+  \phi_j(i, \nu) = \sum_{S\subseteq [n_\texttt{worker}]\setminus\{j\}} \frac{|S|!(n-|S|-1)!}{n!} \left[\nu(S\cup\{j\}) - \nu(S)\right]\enspace.
 \end{equation}
-When there is no ambiguity over the value function, we adopt the standard notation abuse $\phi_j(i, T, \nu)=\phi_j(i, T)$. Furthermore, if all workers participate then, $\phi_j(i, T)=\phi_j(i)$.
+When there is no ambiguity over the value function, we adopt the standard notation abuse $\phi_j(i, \nu)=\phi_j(i)$.
 \end{definition}
+
 Shapley values satisfy the following properties:
 \begin{itemize}
-  \item Symmetry: if $\nu(S\cup\{p\})=\nu(S\cup\{q\})$ for all set $S\subseteq T\setminus\{p,q\}$, then $\phi_p=\phi_q$.
+  \item Symmetry: if $\nu(S\cup\{p\})=\nu(S\cup\{q\})$ for all set $S\subseteq [n_\texttt{worker}]\setminus\{p,q\}$, then $\phi_p=\phi_q$.
   \item Null worker: if $\nu(S\cup\{p\})=\nu(S)$ for $S\subseteq [n_\texttt{worker}]$ then $\phi_p=0$.
   \item Additivity: for two value functions $\nu_1$ and $\nu_2$, $\phi_j(\nu_1+\nu_2)=\phi_j(\nu_1)+\phi_j(\nu_2)$.
-  \item Efficiency: $\sum_{j=1}^{n_\texttt{worker}} \phi_j(\nu)=\nu(T)$.
+  \item Efficiency: $\sum_{j=1}^{n_\texttt{worker}} \phi_j(\nu)=\nu([n_\texttt{worker}])$.
 \end{itemize}
 
 
@@ -302,7 +303,7 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
   \footnotesize{
   \begin{tabular}{l|cc|cc|cc|cc}
   \hline
-  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds}} & \multicolumn{2}{c|}{\textbf{Df 2}} & \multicolumn{2}{c|}{\textbf{Df 3}} & \multicolumn{2}{c}{\textbf{Df 4}} \\
+  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds}} & \multicolumn{2}{c|}{\textbf{Temp}} & \multicolumn{2}{c|}{\textbf{Df 3}} & \multicolumn{2}{c}{\textbf{Df 4}} \\
   \cline{2-9}
    & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} \\
   \hline
