@@ -11,14 +11,24 @@ from crowdkit.datasets import load_dataset, get_datasets_list
 from tqdm.auto import tqdm
 
 sns.set(style="whitegrid")
-from crowdkit.aggregation import DawidSkene, GLAD, MACE, MMSR, KOS, ZeroBasedSkill
+from crowdkit.aggregation import (
+    DawidSkene,
+    GLAD,
+    MACE,
+    MMSR,
+    KOS,
+    ZeroBasedSkill,
+    MajorityVote,
+    Wawa,
+)
 from sklearn.metrics import accuracy_score, f1_score
-from peerannot.models import agg_strategies
+
+# from peerannot.models import agg_strategies
 
 # %%
 
 datasets = [
-    ("bluebirds", 2, 39, 1080),
+    # ("bluebirds", 2, 39, 108),
     # ("weathersentiment", 5, 110, 300),
     # ("labelme", 8, 77, 1000),
     # ("music", 10, 44, 700),
@@ -29,8 +39,11 @@ datasets = [
     # ("relevance5", 5, 1273, 363814),
     # ("cifar10h", 10, 2571, 10000),
     # ("dog", 4, 109, 807),
+    ("temporal", 2, 76, 462)
 ]
 # %%
+
+np.random.seed(11235813)
 
 
 def json_to_dataframe(json_data):
@@ -43,8 +56,8 @@ def json_to_dataframe(json_data):
 
 
 strategies = [
-    ("MV", "peerannot"),
-    ("Wawa", "peerannot"),
+    (MajorityVote, "crowdkit"),
+    (Wawa, "crowdkit"),
     # (DawidSkene, "crowdkit"),
     # (GLAD, "crowdkit"),
     (KOS, "crowdkit"),
@@ -54,7 +67,11 @@ strategies = [
     ("WDS", "peerannot"),
     (ZeroBasedSkill, "crowdkit"),
     (MMSR, "crowdkit"),
-    ("Shapley", "peerannot"),
+    # ("Shapley", "peerannot"),
+    # ("Shapley", "peerannot"),
+    # ("Shapley", "peerannot"),
+    # ("Shapley", "peerannot"),
+    # ("Shapley", "peerannot"),
 ]
 
 
@@ -73,49 +90,51 @@ for data, n_class, n_worker, n_task in tqdm(datasets, desc="Datasets"):
     gt = np.load(f"./data/ground_truth_{data}.npy").astype(int)
     mask_valid = np.where(gt != -1, True, False)
     for i, (strat, library) in tqdm(enumerate(strategies)):
-        try:
-            if library == "crowdkit":
-                model = strat(n_iter=maxiter)
+        # try:
+        if library == "crowdkit" and strat.__name__ not in ["MajorityVote", "Wawa"]:
+            model = strat(n_iter=maxiter)
+        elif library == "crowdkit" and strat.__name__ in ["MajorityVote", "Wawa"]:
+            model = strat()
+        else:
+            model = agg_strategies[strat]
+            model = model(
+                votes,
+                n_workers=n_worker,
+                n_task=n_task,
+                n_classes=n_class,
+                dataset=folder,
+            )
+        if library == "crowdkit":
+            yhat = model.fit_predict(df).to_numpy(dtype=int)
+        else:  # peerannot
+            if strat in ["Shapley", "GLAD"]:
+                model.run(maxiter=maxiter)
             else:
-                model = agg_strategies[strat]
-                model = model(
-                    votes,
-                    n_workers=n_worker,
-                    n_task=n_task,
-                    n_classes=n_class,
-                    dataset=folder,
-                )
-            if library == "crowdkit":
-                yhat = model.fit_predict(df).to_numpy(dtype=int)
-            else:  # peerannot
-                if strat in ["Shapley", "GLAD"]:
-                    model.run(maxiter=maxiter)
-                else:
-                    if hasattr(model, "run"):
-                        model.run()
-                yhat = model.get_answers()
-            acc = accuracy_score(gt[mask_valid], yhat[mask_valid])
-            f1 = f1_score(gt[mask_valid], yhat[mask_valid], average="macro")
-            if library == "crowdkit":
-                results_crowdkit["strategy"].append(strat.__name__)
-            else:
-                results_crowdkit["strategy"].append(strat)
-            results_crowdkit["accuracy"].append(acc)
-            results_crowdkit["dataset"].append(data)
-            results_crowdkit["f1score"].append(f1)
-        except Exception as e:
-            print(f"Exiting {strat} for {data}")
-            print(e)
-            if library == "crowdkit":
-                results_crowdkit["strategy"].append(strat.__name__)
-            else:
-                results_crowdkit["strategy"].append(strat)
-            results_crowdkit["accuracy"].append(np.nan)
-            results_crowdkit["dataset"].append(data)
-            results_crowdkit["f1score"].append(np.nan)
+                if hasattr(model, "run"):
+                    model.run()
+            yhat = model.get_answers()
+        acc = accuracy_score(gt[mask_valid], yhat[mask_valid])
+        f1 = f1_score(gt[mask_valid], yhat[mask_valid], average="macro")
+        if library == "crowdkit":
+            results_crowdkit["strategy"].append(strat.__name__)
+        else:
+            results_crowdkit["strategy"].append(strat)
+        results_crowdkit["accuracy"].append(acc)
+        results_crowdkit["dataset"].append(data)
+        results_crowdkit["f1score"].append(f1)
+        # except Exception as e:
+        #     print(f"Exiting {strat} for {data}")
+        #     print(e)
+        #     if library == "crowdkit":
+        #         results_crowdkit["strategy"].append(strat.__name__)
+        #     else:
+        #         results_crowdkit["strategy"].append(strat)
+        #     results_crowdkit["accuracy"].append(np.nan)
+        #     results_crowdkit["dataset"].append(data)
+        #     results_crowdkit["f1score"].append(np.nan)
 
         results_crowdkit_pd = pd.DataFrame(results_crowdkit)
-        results_crowdkit_pd.to_csv("results_crowdkit_shap_bluebirds.csv")
+        results_crowdkit_pd.to_csv("results_crowdkit_shap_temporal.csv")
         print(results_crowdkit_pd.groupby(by=["dataset", "strategy"]).max())
 # %%
 

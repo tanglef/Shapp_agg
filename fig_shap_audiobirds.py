@@ -17,6 +17,7 @@ from peerannot.models import agg_strategies
 
 # %%
 
+np.random.seed(1)
 datasets = [
     ("bluebirds", 2, 39, 1080),
     # ("weathersentiment", 5, 110, 300),
@@ -123,7 +124,7 @@ import shap
 mod = model.best_model
 explainer = shap.TreeExplainer(mod)
 shap_values = explainer(model.X_train_np)
-shap.plots.beeswarm(shap_values)  # %%
+shap.plots.beeswarm(shap_values)
 
 # %%
 fig = shap.summary_plot(shap_values, model.X_train_np, plot_type="bar", show=False)
@@ -135,7 +136,56 @@ plt.savefig("summary_plot_shap_beeswarm_bluebirds.pdf")
 
 
 # %%
+acc = []
+for j in range(39):
+    votes_j = np.array([vv[str(j)] for vv in votes.values()])
+    acc.append(np.mean(votes_j == gt))
+acc
+# %%
+data_mat = [np.repeat(model.weight.reshape(-1, 1), 2, axis=1) for _ in range(7)]
+data_mat = np.array(data_mat)
+names = {
+    0: "MV",
+    1: "WAWA",
+    2: "KOS",
+    3: "WDS",
+    4: "ZeroBasedSkill",
+    5: "MMSR",
+    6: "Shapley",
+}
+# Create subplots for heatmaps
+fig, axs = plt.subplots(2, 4, figsize=(14, 4))
+from matplotlib.colors import LogNorm
 
-import json
+# Plot each heatmap
+for i in range(4):
+    im = axs[0, i].imshow(data_mat[i], cmap="plasma", interpolation="nearest")
+    axs[0, i].set_title(f"Strategy {names[i]}")
+    plt.colorbar(im, ax=axs[0, i])
+    axs[0, i].axis("off")
+for i in range(3):
+    im = axs[1, i].imshow(
+        data_mat[4 + i],
+        cmap="plasma",
+        interpolation="nearest",
+    )
+    axs[1, i].set_title(f"Strategy {names[4+i]}")
+    if i == 2:
+        im = axs[1, i].imshow(
+            data_mat[4 + i], cmap="plasma", interpolation="nearest", norm=LogNorm()
+        )
+        # plt.xscale('log')
+        # plt.yscale("log")
+    plt.colorbar(im, ax=axs[1, i])
+    axs[1, i].axis("off")
+# Hide any unused subplots
+for i in range(len(data), len(axs)):
+    axs[i].axis("off")
+axs[1, -1].axis("off")
+axs[1, -1].grid(False)
 
-votes =
+plt.tight_layout()
+plt.savefig("matrix_weights_shap_bluebirds.pdf")
+plt.show()
+
+# %%

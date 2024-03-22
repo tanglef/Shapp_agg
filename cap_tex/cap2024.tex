@@ -57,32 +57,30 @@ Frequently, the annotation process is outsourced to a crowd of non-expert worker
 However, the quality of the annotations can vary greatly from one worker to another \citep{ross2009turkers,ipeirotis2010quality,hara2018data}.
 
 To address this issue, several label aggregation strategies have been proposed in the literature.
-The most common approach is the majority vote (MV), which consists of selecting the label that has been chosen by the majority of the workers.
-While simple and easy to implement, MV has several limitations.
-One of the most impactful is that it does not take into account the reliability of the workers: all workers have the same weight in the final aggregated label no matter their level of expertise.
+The most common approach is the majority vote (MV) strategy, which consists of selecting the label with the largest number of responses.
+While simple and easy to implement, MV has several limitations, such as not taking into account the reliability of the workers. Indeed, it affects the same weight to all the workers in the final aggregated label, no matter their level of expertise.
 
-To alleviate this issue, probabilistic generative models such as DS \citep{dawid_maximum_1979} or GLAD \citep{whitehill_whose_2009} have been proposed.
-They propose to model the generative model of the votes based on the underlying true label -- unknown and modeled as a latent variable.
+To alleviate this issue, probabilistic generative models such as DS \citep{dawid_maximum_1979} or GLAD \citep{whitehill_whose_2009} have been proposed, relying on generative models of the votes.
 These models estimate the reliability of the workers and take it into account in the label aggregation process through different parameters. The DS model considers that each worker has an assigned confusion matrix -- to be estimated -- while GLAD models the reliability of the workers through a scalar weight and also includes the task's difficulty in the final aggregation.
-However, while the framework is flexible to incorporate various sources of information, the inference is often based on the Expectation-Maximization algorithm and can be computationally expensive and sensitive to initializations.
+Such a framework is flexible enough to incorporate various sources of information, and the inference is often based on the Expectation-Maximization algorithm which is computationally expensive and sensitive to initialization.
 Moreover, the final interpretation of the aggregation from the workers' votes is not straightforward and the result of probabilistic models can be difficult to interpret for non-experts.
 
-Weighted MV (WMV) strategies \citep{appen_wawa_2021,karger2011iterative,ma2020adversarial} have proven to be both effective and easy to interpret. Indeed, the method's principle is straightforward: each worker is assigned a weight that represents their reliability. The aggregated label is then the label that reflects the most votes of workers relative to their reliability.
+Weighted MV (WMV) strategies \citep{appen_wawa_2021,karger2011iterative,ma2020adversarial} have proven to be both effective and easy to interpret. Indeed, the method's principle is straightforward: each worker is assigned a weight that represents their reliability. The aggregated label is then the label that reflects the votes of workers relative to their reliability.
 
-In this work, we aim to propose a new weight in the weighted MV strategy based on the Shapley values \citep{shapley1953value}.
-The Shapley value is a concept originating from cooperative game theory and has been used in various fields such as economics \citep{aumann1994economic}, political science \citep{engelbrecht2009use}, and machine learning for explainability \citep{lundberg2017unified} or feature selection \citep{cohen2007feature}.
-Shapley values have been used in the context of data valuation in classification \citep{schoch2022cs} and active learning \citep{ghorbani2022data}, we propose to extend it to classification in a crowdsourcing setting.
+In this work, we aim to propose a new weight for WMV based on the Shapley values \citep{shapley1953value}.
+The Shapley value is a concept originating from cooperative game theory that has been used in various fields such as economics \citep{aumann1994economic}, political science \citep{engelbrecht2009use}, and machine learning for explainability \citep{lundberg2017unified} or feature selection \citep{cohen2007feature}.
+Shapley values have been used in the context of data valuation in classification \citep{schoch2022cs} and active learning \citep{ghorbani2022data}. Here, we propose to extend it to classification in a crowdsourcing setting.
 
 If we consider that each worker is a feature and each task is a sample point, given a classifier, the Shapley value explains the contribution of each worker to the predicted outcome at each queried task \citep{molnar2020interpretable}.
-More specifically, for a given task $i$, the value of the worker $j$ contribution, denoted $\phi_j(i)\in\mathbb{R}$, to the task's prediction compared to the average prediction for the dataset.
+% More specifically, for a given task $i$, the value of the worker $j$ contribution, denoted $\phi_j(i)\in\mathbb{R}$, to the task's prediction compared to the average prediction for the dataset.
 We propose a study of their usage as interpretable weights in weighted majority votes for crowdsourcing classification tasks.
 
 \section{Notation and related work}
 
 \paragraph{Notation.}
 We consider classical multi-class learning notation, with input in $\mathcal{X}$ and labels in $[K]:=\{1,\dots,K\}$.
-There are $n_\text{task}$ available, denoted $x_1,\dots,x_{n_\texttt{task}}$, to be labeled by $n_\text{worker}$ workers. The set of $n_\text{task}$ tasks with their associated true labels is $\mathcal{D}=\{(x_1,y_1^\star),\dots,(x_{n_\texttt{task}},y_{n_\texttt{task}}^\star)\}$.
-Denote $\mathbf{Y}\in [K]^{n_\text{task}\times n_\text{worker}}$ the matrix of the workers' answers for each task.
+There are $n_\texttt{task}$ available, denoted $x_1,\dots,x_{n_\texttt{task}}$, to be labeled by $n_\texttt{worker}$ workers. The set of $n_\texttt{task}$ tasks with their associated true labels is $\mathcal{D}=\{(x_1,y_1^\star),\dots,(x_{n_\texttt{task}},y_{n_\texttt{task}}^\star)\}$.
+Denote $\mathbf{Y}\in [K]^{n_\texttt{task}\times n_\texttt{worker}}$ the matrix of the workers' answers for each task.
 The true labels are unobserved but crowdsourced labels are provided by the workers.
 We write $\mathcal{A}(x_i)=\{j \in [n_\texttt{worker}]: \text{worker } j \text{ labeled task } x_i\}$ the \textbf{annotators set} of a task $x_i$.
 For a task $x_i$ and each $j \in \mathcal{A}(x_i)$, we denote $\smash{y_i^{(j)}\in[K]}$ the label answered by worker $j$.
@@ -93,73 +91,81 @@ The matrix full of ones of size $n\times m$ is denoted $\mathbf{1}_{n\times m}$.
 The row of a matrix $M$ indexed by $i$ is denoted $M_{i,:}$ and the column indexed by $j$ is $M_{:,j}$.
 
 On released datasets, to compute performance metrics, partial true labels are made available.
-We denote $\mathcal{D}_\text{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\text{test}$ the set of tasks with known true labels. Note that these true labels are only used at test time.
+We denote $\mathcal{D}_\texttt{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\texttt{test}$ the set of tasks with known true labels. Note that these true labels are only used at test time.
 Both workers and aggregation strategies do not have access to the true labels. Their goal is to recover it.
 
-The impact of a worker is evaluated by a value function $\nu:2^{[n_\text{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\text{worker}]$ and any worker $j_0\notin S$, $\nu(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. Note that in a classification setting with probability output, the value function is the probability given to the predicted label.
+The impact of a worker is evaluated by a value function $\nu:2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\texttt{worker}]$ and any worker $j_0\notin S$, $\nu(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. Note that in a classification setting with probability output, the value function is the probability given to the predicted label.
 
 \paragraph{Existing weighted label aggregation strategies.}
 
 In this work, we focus on label aggregation strategies as weighted Majority Votes \citep{littlestone1994weighted} -- \emph{i.e.} that can be written as:
 \begin{equation}
   \label{eq:wmv_general}
-  \hat{y}_i = \text{WMV}(i, W):=\argmax_{k \in [K]} \sum_{j\in\mathcal{A}(x_i)} w_{j,k} \mathds{1}(y_i^{(j)} = k),
+ \forall i \in [n_\texttt{task}], \quad \hat{y}_i = \text{WMV}(i, W):=\argmax_{k \in [K]} \sum_{j\in\mathcal{A}(x_i)} W_{j,k} \mathds{1}(y_i^{(j)} = k),
 \end{equation}
-where $W \in \mathbb{R}^{[n_\text{worker}]\times [K]}$ is the matrix assiging the weight of worker $j$ for their answer given a class $k$.
-We denote $w_{j,k}\in\mathbb{R}$ the weight of worker $j$ for class $k$.
+where $W \in \mathbb{R}^{n_\texttt{worker}\times K}$ is the matrix assigning the weight of worker $j$ for their answer given a class $k$.
+We denote $W_{j,k}\in\mathbb{R}$ the weight of worker $j$ for class $k$.
 This weight matrix is the cornerstone of each aggregation strategy.
+% Note that since for any $\alpha \in \mathbb{R}$, $\text{WMV}(i, \alpha W) = \text{WMV}(i, W)$, we can assume that the weights are normalized such that $\sum_{j \in [n_\texttt{worker}]} \sum_{k=1}^K W_{j,k}=n_\texttt{worker}$ for all $j\in[n_\texttt{worker}]$.
+% XXX: this corresponds to the ZBS choice. Actually it could be interesting to check the algorithm keeps this property. I doubt it...meaning that the weights are not normalized in the end. This might be a point to discuss.
+% {XXX : $W_{j,k}\geq 0$ or not? to discuss}
 
 Let us detail existing label aggregation strategies that fit into this framework.
 \begin{itemize}
   \item MV: The majority vote strategy assigns the label that has been chosen by the majority of the workers. It can be written as:
     \begin{equation}
       \label{eq:mv}
-      \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i, \mathbf{1}_{n_\text{worker}\times K})\enspace.
+      \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i,\mathbf{1}_{n_\texttt{worker}\times K})\enspace.
     \end{equation}
-    This is the most simple weights assignment, where all workers have the same weight.
+    This is the most simple weights assignment, where all workers share the same weight, for all labels.
     \item WAWA \citep{appen_wawa_2021}: This strategy, also known as the inter-rater agreement, weights each user by how much they agree with the MV labels on average. More formally, given a task $i$:
     \begin{equation}
       \hat{y}_i^\text{WAWA}= \mathrm{WMV}\left(i,W\right),\quad
       \text{with}\quad W_{j,:} = \left(\frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_{i'}^\text{MV}\right)\right)\mathbf{1}_{K}\enspace.
     \end{equation}
-    It allows us to easily compute a weight for each worker and improve the MV strategy.
+    It allows us to instantiate a weight that can vary for each worker (but not per task) and it usually improves on the MV strategy.
     \item ZBS \citep{CrowdKit2023}: The Zero-Based Skill aggregation is a gradient descent (GD)-based version of the WAWA strategy.
-    First, the labels are estimated using the MV aggregation. Then, we perform a descent step on the weights to minimize the squared error between the current worker's weight and the weight assigned by the WAWA strategy. Finally, the aggregated labels are recomputed using the WMV strategy. This loop is repeated until the convergence of the labels.
+    First, the labels are initialized using the MV strategy. Then, we perform a descent step on the weights to minimize the squared error between the current worker's weight and the weight assigned by the WAWA strategy. Finally, the aggregated labels are recomputed using the WMV strategy. This loop is repeated until the convergence of the labels.
     \begin{algorithm}
       \caption{Zero Based Skill algorithm.}
       \begin{algorithmic}[1]
         \State \textbf{Input:} $\eta>0$ the learning rate, $t_{\max}>0$ maximum number of iterations,
-      \State Initialize weights at step $0$: $W^0=\frac{1}{K} \mathbf{1}_{n_\text{worker}\times K}$.
+      \State Initialize weights at step $0$: $W^0=\frac{1}{K} \mathbf{1}_{n_\texttt{worker}\times K}$.
         \For{$t=1,\dots, t_{\max}$}
-            \State Update labels: $\hat{y}_i^{t} = \mathrm{WMV}(i, W^{t-1})$ for $i\in [n_\text{task}]$
+            \State Update labels: $\hat{y}_i^{t} = \mathrm{WMV}(i, W^{t-1})$ for $i\in [n_\texttt{task}]$
             \State Compute current accuracy by worker: $a_j =\left(\frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_i^t\right)\right)\mathbf{1}_K$
-            \State Update weights for each worker $j\in [n_\text{worker}]$: $W^t_{j,:} = W^{t-1}_{j, :} - \eta (W^{t-1}_{j,:}-a_j)$
+            \State Update weights for each worker $j\in [n_\texttt{worker}]$: $W^t_{j,:} = W^{t-1}_{j, :} - \eta (W^{t-1}_{j,:}-a_j)$
         \EndFor
         \State \textbf{Output:} $\hat{y}_i^\text{ZBS} = \hat{y_i}^{t_{\max}}$.
       \end{algorithmic}
       \end{algorithm}
 
-    At the end, the last label's iterate is computed as a weighted majority vote from the last iterates of the estimated weights.
+    In the end, the last label's iterate is computed as a weighted majority vote from the last iterates of the estimated weights.
 
-  \item WDS \citep{dawid_maximum_1979}: This strategy is based on the Dawid-Skene model.Each worker is associated to its confusion matrix $\pi^{(j)}\in\mathbb{R}^{K\times K}$ such that the $(k,\ell)$-entry represents the probability for worker $j$ to answer $\ell\in[K]$ when the unknown true label is $k\in[K]$. Each term on the diagonal represents the ability of the worker to answer correctly the underlying label.
+    \item WDS \citep{dawid_maximum_1979}:
+    % XXX should we cite Maximilien here? (maximilien n'a pas fait de WDS)
+    This strategy is based on the Dawid-Skene model. A confusion matrix $\pi^{(j)}\in\mathbb{R}^{K\times K}$ is associated to each worker, such that the $(k,\ell)$-entry or $\pi^{(j)}$ represents the probability for worker $j$ to answer $\ell\in[K]$ when the unknown true label is $k\in[K]$. For instance, each diagonal term represents the ability of the worker to answer correctly the underlying label.
   Using this DS diagonal, we obtain a weighted majority vote denoted WDS:
   \begin{equation}
     \hat{y}_i^\text{WDS}= \mathrm{WMV}\left(i, W\right),\quad
-    \text{with}\quad w_{j,k} = \pi^{(j)}_{k,k}\enspace.
+    \text{with}\quad W_{j,k} = \pi^{(j)}_{k,k}\enspace.
   \end{equation}
-  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of all workers as a vector $s\in\mathbb{R}^{n_\text{worker}}$. Each entry $s_j$ represents the probability of the worker $j$ of answering correctly.
+  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of all workers as a vector $s\in\mathbb{R}^{n_\texttt{worker}}$. Each entry $s_j$ represents the probability of the worker $j$ of answering correctly.
   This problem can be formulated as a rank-one matrix completion problem per worker defined as:
   \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=ss^\top \enspace,\]
   where $C$ is the covariance matrix of the workers' answers.
   The final label is a weighted majority vote written:
   \begin{equation}
-    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad w_{j,k}=\log\frac{(K-1)s^j_k}{1-s^j_k}\enspace.
+    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad W_{j,k}=\log\frac{(K-1)s^j_k}{1-s^j_k}\enspace.
   \end{equation}
+  % XXX Expectation C, and the model itself are a bit obscure, we should detail this more.
+
+  % XXX : we should drop this strategy, or reduce it drastically as it is not adapted to non-binary settings.
   \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$, the KOS strategy from a graph-theory perspective.
-  Denote $G([n_\text{task}]\cup [n_\text{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
+  Denote $G([n_\texttt{task}]\cup [n_\texttt{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
   On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in\{-1,1\}$.
 
-  The KOS strategy estimates how much a worker is reliable by how much their answers are consistent with the answers of their neighbors and the likelihood of a task having $y_i^\star=1$.
+  The KOS strategy estimates the reliability of a worker based on the consistency of their answers with those of their neighbors and the likelihood of a task having $y_i^\star=1$.
   Both pieces of information are propagated into the graph as messages.
   The final label is then estimated by the sign of the sum of the messages received by the task weighted by the workers' reliability.
 
@@ -173,20 +179,20 @@ Let us detail existing label aggregation strategies that fit into this framework
   \end{align*}
   Finally, the estimated label is computed as:
   \begin{equation}
-    \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\text{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{1\times K}\enspace.
+    \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\texttt{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{1\times K}\enspace.
   \end{equation}
   The worker's weight is estimated iteratively inspired by the belief propagation algorithm to look at the worker agreements on neighboring tasks.
-  Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\text{task}$ weight matrices. Moreover, in practice, the weights can diverge and implementations use a threshold to stop the iterations (see the implementation\footnote{\url{https://github.com/Toloka/crowd-kit/blob/v1.2.1/crowdkit/aggregation/classification/kos.py\#L11}} in \citep{CrowdKit2023}).
+  Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\texttt{task}$ weight matrices.
 
 \end{itemize}
-Note that depending on the strategy, the weights $w_{j,k}$ might not be upper-bounded. Indeed, in WAWA as the weight is the accuracy, it is at most $1$. However, the KOS strategy does not have an upper bound on the weights.
+Note that depending on the strategy, the weights $W_{j,k}$ might not be upper-bounded. Indeed, in WAWA as the weight is the accuracy, it is at most $1$. However, KOS strategy does not have an upper bound on the weights.
 If the weights are not upper-bounded, the more a worker answers following other workers, the more weight they will accumulate. This kind of strategy rewards engagement.
-In \Cref{fig:weights_by_strat} we show how each strategy leads to different weights and scalings. The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sub:evaluation}.
+In \Cref{fig:weights_by_strat} we show how each strategy leads to different weights and scales. The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sec:results}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{../matrix_weights_bluebirds.pdf}
-  \caption{Example of weight matrices $W\in\mathbb{R}^{n_\text{worker}\times K}$ obtained for the BlueBirds dataset using the presented strategies and our in \Cref{alg:shap}. We transpose them for ease of readability (each row is a class, each column a worker). Only WDS takes into account the class label. For KOS, we show the weight in absolute value, averaged over the tasks (as the weights are task-dependent). However, this transformation does not affect the scale of magnitude of weights.}
+  \caption{Example of weight matrices $W\in\mathbb{R}^{n_\texttt{worker}\times K}$ obtained for the BlueBirds ($n_\texttt{worker}=39, K=2$) dataset using the presented strategies and our in \Cref{alg:shap}. We transpose them for ease of readability (each row is a class, each column a worker). Only WDS takes into account the class label. For KOS, we show the weight in absolute value, averaged over the tasks (as the weights are task-dependent). However, this transformation does not affect the scale of magnitude of weights.}
   \label{fig:weights_by_strat}
 \end{figure}
 
@@ -199,8 +205,13 @@ Shapley values have been used to quantify the contribution of individual feature
 In the context of crowdsourcing, we propose to use Shapley values to quantify the contribution of each worker to the final label aggregation.
 We first recall the definition of a Shapley value.
 
+% XXX might be easier to instantiate in your context with: $T=[n_\texttt{worker}]$. One letter spared. and T could be silent.
+
+% XXX Instantiate here  the $\nu$ function we are going to use next "-- for example the prediction score of a classifier -- " so you can silence the $\nu$ in the definition of the Shapley value.
+% XXX why not only using $\phi_j(i)$ since $T$ and $\nu$ will be fixed
+
 \begin{definition}
-Given a set of workers $T$ with $n_\text{worker}$, and a value function $\nu(\cdot): 2^T\rightarrow \mathbb{R}$ -- for example the prediction score of a classifier -- the Shapley value of a worker $j$ for a task $i$ is defined as the average marginal contribution of the worker $j$ to every subset of $T\setminus\{j\}$:
+Given a set of workers $T$ with $n_\texttt{worker}$, and a value function $\nu(\cdot): 2^T\rightarrow \mathbb{R}$ the Shapley value of a worker $j$ for a task $i$ is defined as the average marginal contribution of the worker $j$ to every subset of $T\setminus\{j\}$:
 \begin{equation}
   \phi_j(i, T, \nu) = \sum_{S\subseteq T\setminus\{j\}} \frac{|S|!(n-|S|-1)!}{n!} \left[\nu(S\cup\{j\}) - \nu(S)\right]\enspace.
 \end{equation}
@@ -209,10 +220,11 @@ When there is no ambiguity over the value function, we adopt the standard notati
 Shapley values satisfy the following properties:
 \begin{itemize}
   \item Symmetry: if $\nu(S\cup\{p\})=\nu(S\cup\{q\})$ for all set $S\subseteq T\setminus\{p,q\}$, then $\phi_p=\phi_q$.
-  \item Null worker: if $\nu(S\cup\{p\})=\nu(S)$ for $S\subseteq [n_\text{worker}]$ then $\phi_p=0$.
+  \item Null worker: if $\nu(S\cup\{p\})=\nu(S)$ for $S\subseteq [n_\texttt{worker}]$ then $\phi_p=0$.
   \item Additivity: for two value functions $\nu_1$ and $\nu_2$, $\phi_j(\nu_1+\nu_2)=\phi_j(\nu_1)+\phi_j(\nu_2)$.
-  \item Efficiency: $\sum_{j=1}^{n_\text{worker}} \phi_j(\nu)=\nu(T)$.
+  \item Efficiency: $\sum_{j=1}^{n_\texttt{worker}} \phi_j(\nu)=\nu(T)$.
 \end{itemize}
+
 
 Where the Shapley value is interesting for a crowdsourcing problem, is that if a worker does not help the classifier to predict the label, then its Shapley value will be close to zero. And, two workers with similar contributions will obtain similar Shapley values.
 
@@ -220,20 +232,20 @@ Where the Shapley value is interesting for a crowdsourcing problem, is that if a
 
 We introduce the following label aggregation algorithm based on Shapley values.
 It is based on the Expectation-Maximization procedure where we iteratively estimate the labels and the workers' skills until convergence -- \emph{e.g.} stabilization of the skills.
-Given a current estimation of the labels and a classifier $\mathcal{C}$, we consider the skill of each worker as their total contribution in the predictions.
-The contribution of a worker $j_0\in[n_\text{worker}]$ on a single task $i_0\in [n_\text{task}]$ is given as $|\phi_{j_0}(i_0)|\in\mathbb{R}_+$.
+Given a current estimation of the labels and a classifier $\mathcal{C}$, we consider the skill of each worker as their total contribution to the prediction.
+The contribution of a worker $j_0\in[n_\texttt{worker}]$ on a single task $i_0\in [n_\texttt{task}]$ is given as $|\phi_{j_0}(i_0)|\in\mathbb{R}_+$.
 
 \begin{algorithm}[tbh]
   \caption{Shapley label aggregation strategy.}\label{alg:shap}
   \begin{algorithmic}[1]
     \State \textbf{Input:} classifier $\mathcal{C}$, $t_{\max}>0$ maximum number of iterations
-  \State Initialize labels with MV: $\hat{y}_i^0 = \mathrm{WMV}(i, \mathbf{1}_{n_\text{worker}\times K})$ for each task $i\in [n_\text{task}]$
+  \State Initialize labels with MV: $\hat{y}_i^0 = \mathrm{WMV}(i, \mathbf{1}_{n_\texttt{worker}\times K})$ for each task $i\in [n_\texttt{task}]$
     \For{$t=0,\dots, t_{\max} - 1 $}
-        \State Train classifier $\mathcal{C}$ on $\{(x_i, \hat{y}_i^t)_{i\in [n_\text{task}]}\}$
-        \State Compute Shapley values' total contribution of each worker $j\in [n_\text{worker}]$:
-        \[ \mathrm{contrib}(j) = \sum_{i=1}^{n_\text{task}} |\phi_{j}(i)|\enspace. \]
-        \State Update weights: $W^t_{j,:} = \mathrm{contrib}(j)\mathbf{1}_K$ for each worker $j\in [n_\text{worker}]$
-        \State Update labels with WMV: $\hat{y}_i^{t+1} = \mathrm{WMV}(i, W^{t})$ for $i\in[n_\text{task}]$.
+        \State Train classifier $\mathcal{C}$ on $\{(x_i, \hat{y}_i^t)_{i\in [n_\texttt{task}]}\}$
+        \State Compute Shapley values' total contribution of each worker $j\in [n_\texttt{worker}]$:
+        \[ \mathrm{contrib}(j) = \sum_{i=1}^{n_\texttt{task}} |\phi_{j}(i)|\enspace. \]
+        \State Update weights: $W^t_{j,:} = \mathrm{contrib}(j)\mathbf{1}_K$ for each worker $j\in [n_\texttt{worker}]$
+        \State Update labels with WMV: $\hat{y}_i^{t+1} = \mathrm{WMV}(i, W^{t})$ for $i\in[n_\texttt{task}]$.
     \EndFor
     \State \textbf{Output:} $\hat{y}_i^\text{shapley} = \hat{y_i}^{t_{\max}}$.
   \end{algorithmic}
@@ -247,23 +259,24 @@ And, at the same time, it can identify which workers are not contributing to the
 \subsection{Implementation}
 \label{sub:implementation}
 
-To compute Shapley values, we use the \texttt{Shap} library \citep{NIPS2017_7062}.
+To compute Shapley values, we use the \texttt{Shap} library \citep{lundberg2017unified}.
 We use an XGBOOST classifier \citep{chen2016xgboost} as the classifier $\mathcal{C}$.
-Shapleu values can thus be
+
+% Shapley values can thus be XXX?
+
 Label aggregation strategies are implemented in Python using the \texttt{crowd-kit} \citep{CrowdKit2023} or \texttt{peerannot} \citep{peerannot} libraries.
 The XGBOOST classifier is known to have an extensive number of hyperparameters to tune.
-To choose them, we first use the \texttt{optuna} \citep{optuna} library to tune over a $3$-fold cross-validation of best hyperparameters for the set of tasks and label $\{(x_i, \hat{y}_i^0)_{i\in [n_\text{task}]}\}$.
-This random search includes the trees' depth, learning rate, the number of trees, the minimum child weight, the subsampling proportion and regularizations. These best parameters are then used in \Cref{alg:shap} to iteratively train the XGBOOST model with the current label estimates.
+To choose them, we first use the \texttt{optuna} \citep{optuna} library to tune over a $3$-fold cross-validation of best hyperparameters for the set of tasks and label $\{(x_i, \hat{y}_i^0)_{i\in [n_\texttt{task}]}\}$.
+This random search includes the trees' depth, learning rate, the number of trees, the minimum child weight, the subsampling proportion and regularization parameter. These best parameters are then used in \Cref{alg:shap} to iteratively train the XGBOOST model with the current label estimates.
 
 \subsection{Evaluation metrics}
-\label{sub:evaluation}
 
 We evaluate the performance of the Shapley label aggregation strategy using the accuracy and the F1 score.
 More precisely, each of the real datasets considered provides a -- partially known -- ground truth.
-This test set is denoted $\mathcal{D}_\text{test}=\{(x_i, y_i^\star)\}_{i=1}^{n_\text{test}}$ and is used to evaluate the accuracy of the label aggregation strategies.
+This test set is denoted $\mathcal{D}_\texttt{test}=\{(x_i, y_i^\star)\}_{i=1}^{n_\texttt{test}}$ and is used to evaluate the accuracy of the label aggregation strategies.
 This ground truth is not used during the aggregation, only at evaluation time.
-The accuracy of the aggregation strategy \texttt{agg} is the proportion of correctly predicted labels $(\hat[y]^\texttt{agg}_i)_{i=1}^{n_\text{test}}$ over the total number of tasks in $\mathcal{D}_\text{test}$ with ground truth in $y^\star=(y_i^\star)_{i=1}^{n_\text{test}}$:
-\[\mathrm{Accuracy}(\hat{y}^\texttt{agg}, y^\star) = \frac{1}{n_\text{test}}\sum_{i=1}^{n_\text{test}} \mathds{1}(\hat{y}^\texttt{agg}_i=y_i^\star) \enspace.\]
+The accuracy of the aggregation strategy \texttt{agg} is the proportion of correctly predicted labels $(\hat[y]^\texttt{agg}_i)_{i=1}^{n_\texttt{test}}$ over the total number of tasks in $\mathcal{D}_\texttt{test}$ with ground truth in $y^\star=(y_i^\star)_{i=1}^{n_\texttt{test}}$:
+\[\mathrm{Accuracy}(\hat{y}^\texttt{agg}, y^\star) = \frac{1}{n_\texttt{test}}\sum_{i=1}^{n_\texttt{test}} \mathds{1}(\hat{y}^\texttt{agg}_i=y_i^\star) \enspace.\]
 We take into account the possible class imbalance by presenting a macro-average F1 score. Denoting respectively $\mathrm{TP}_k$, $\mathrm{FP}_k$ and $\mathrm{FN}_k$ the true positives, false positives and false negatives related to the class $k\in[K]$, the macro averaged F1-score writes
 \[
 \mathrm{F1} = \frac{1}{K}\sum_{k=1}^K\frac{\mathrm{TP}_k}{\mathrm{TP}_k + 0.5(\mathrm{FN}_k + \mathrm{FP}_k)}\enspace.
@@ -271,7 +284,8 @@ We take into account the possible class imbalance by presenting a macro-average 
 This score is commonly used to evaluate the balance between precision and recall in classification tasks. It provides a measure of the quality of the label aggregation strategy when dealing with imbalanced datasets.
 
 These metrics are evaluated on several real datasets.
-The BlueBirds dataset \citep{WelinderEtal10b} is a binary classification ($K=2$) dataset with $n_\text{task}=108$ tasks and $n_\text{worker}=39$ workers.
+The BlueBirds dataset \citep{WelinderEtal10b} is a binary classification ($K=2$) dataset with $n_\texttt{task}=108$ tasks and $n_\texttt{worker}=39$ workers. Workers were asked to identify if there was a blue bird of the species Indigo Bunting in the presented image.
+The Temporal Ordering (Temp) \citep{snow_cheap_2008} dataset is a binary classification dataset with $n_\texttt{task}=462$ tasks and $n_\texttt{worker}=76$ workers. Workers were presented with sentences with events and asked if the event presented in the first sentence occurred before the one in the second sentence.
 
 \section{Results}
 \label{sec:results}
@@ -292,13 +306,13 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
   \cline{2-9}
    & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} \\
   \hline
-  MV    & 0.759 & 0.742 & 0. & 0. & 0. & 0. & 0. & 0. \\
-  WAWA  & 0.759 & 0.742 & 0. & 0. & 0. & 0. & 0. & 0. \\
-  ZBS   & 0.648 & 0.623 & 0. & 0. & 0. & 0. & 0. & 0. \\
-  WDS   & 0.759 & 0.736 & 0. & 0. & 0. & 0. & 0. & 0. \\
-  KOS   & 0.630 & 0.570 & 0. & 0. & 0. & 0. & 0. & 0. \\
-  M-MSR & 0.639 & 0.578 & 0. & 0. & 0. & 0. & 0. & 0. \\
-  \rowcolor{lightgray} Shapley & \textbf{0.805}& \textbf{0.794}& & & & & & \\
+  MV    & 0.759 & 0.742 & 0.511 & 0.505 & 0. & 0. & 0. & 0. \\
+  WAWA  & 0.759 & 0.742 & 0.510 & 0.505 & 0. & 0. & 0. & 0. \\
+  ZBS   & 0.648 & 0.623 & 0.510 & 0.505 & 0. & 0. & 0. & 0. \\
+  WDS   & 0.759 & 0.736 & 0.923 & 0.925 & 0. & 0. & 0. & 0. \\
+  KOS   & 0.630 & 0.570 & 0.557 & 0.366 & --- & --- & --- & --- \\
+  M-MSR & 0.639 & 0.578 & 0.517 & 0.508 & 0. & 0. & 0. & 0. \\
+  \rowcolor{lightgray} Shapley & \textbf{0.805}& \textbf{0.794}& \textbf{0.935} & \textbf{0.934} & & & & \\
 
   \hline
   \end{tabular}
@@ -316,8 +330,8 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
 
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=\textwidth]{./../summary_plot_shap_beeswarm_bluebirds.pdf}
-  \caption{Summary of the main contributing workers for the BlueBirds dataset using Shapley values. Each dot is a task with its associated Shapley value. Left: Worker $34$ has the highest contribution to the final label -- either for class $0$ or $1$, followed by worker $31$ and $0$. Then, worker $19$ has better identification for class $0$ than class $1$. Right: Average impact of each worker on the final predicted label by the XGBOOST classifier. This worker's contribution scalar value -- used in \Cref{alg:shap} weight -- does not allow to differentiate between classes contribution.}
+  \includegraphics[width=\textwidth]{./../summary_plot_shap_all_bluebirds.pdf}
+  \caption{Summary of the main contributing workers for the BlueBirds dataset using Shapley values. Left: Worker $0$ has the highest contribution to the final label -- either for class $0$ or $1$, followed by worker $15$. Then, worker $36$ has better identification for class $1$ than class $0$. Right: Average impact of each worker on the final predicted label by the XGBOOST classifier. This worker's contribution scalar value -- used in \Cref{alg:shap} weight $W_{j,:}$ -- does not allow to differentiate between classes.}
   \label{fig:shap_bluebirds}
 \end{figure}
 
@@ -326,10 +340,10 @@ Let us explore the BlueBirds' dataset Shapley weights as an example.
 From \Cref{fig:shap_bluebirds}, we see that worker $0$ has the best overall contribution to the final label.
 Note that this order of contribution given by Shapley values is in agreement with the accuracy of the workers even though Shapley values are not directly linked to the accuracy of a model.
 Indeed, as we know the ground truth, we can compute the accuracy of each worker.
-The accuracy of worker $0$ is $0.80$, worker $34$ is $0.79$, worker $31$ is $0.74$ -- the three main workers contributing to the final aggregation -- and worker $33$ is $0.44$ (random answers).
+The accuracy of worker $0$ is $0.80$, worker $15$ is $0.73$ -- the two main workers contributing to the final aggregation -- and worker $10$ is $0.5$ (random answers).
 The worker $22$ -- not represented in \Cref{fig:shap_bluebirds} as they are not a main contributor -- has an accuracy of $0.42$ -- worse than a random guess -- and an average absolute contribution of $0.03$ to the final label. This worker is indeed not contributing to the final label given the poor quality of their answers.
 
-Worker $19$ has a better identification for class $0$ than class $1$.
+Worker $15$ is the second-best contributor, and worker $36$ has a better identification for class $1$ than class $0$.
 However, as we use a single scalar value that is class-blind in \Cref{alg:shap} to aggregate the label in the WMV, this asymmetrical contribution is not taken into account.
 This is a limitation of the current Shapley label aggregation strategy.
 
