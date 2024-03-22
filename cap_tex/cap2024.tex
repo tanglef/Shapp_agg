@@ -186,7 +186,7 @@ In \Cref{fig:weights_by_strat} we show how each strategy leads to different weig
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{../matrix_weights_bluebirds_workers.pdf}
-  \caption{Example of weights obtained for the BlueBirds dataset using the presented.}
+  \caption{Example of weight matrices $W\in\mathbb{R}^{n_\text{worker}\times K}$ obtained for the BlueBirds dataset using the presented strategies and our in \Cref{alg:shap}. We transpose them for ease of readability (each row is a class, each column a worker). Only WDS takes into account the class label. For KOS, we show the weight in absolute value, averaged over the tasks (as the weights are task-dependent). However, this transformation does not affect the scale of magnitude of weights.}
   \label{fig:weights_by_strat}
 \end{figure}
 
