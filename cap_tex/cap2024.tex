@@ -74,7 +74,7 @@ The Shapley value is a concept originating from cooperative game theory and has 
 Shapley values have been used in the context of data valuation in classification \citep{schoch2022cs} and active learning \citep{ghorbani2022data}, we propose to extend it to classification in a crowdsourcing setting.
 
 If we consider that each worker is a feature and each task is a sample point, given a classifier, the Shapley value explains the contribution of each worker to the predicted outcome at each queried task \citep{molnar2020interpretable}.
-More specifically, for a given task $i$, the value of the worker $j$ contribution is $\phi_j(i)\in\mathbb{R}$ to the task's prediction compared to the average prediction for the dataset.
+More specifically, for a given task $i$, the value of the worker $j$ contribution, denoted $\phi_j(i)\in\mathbb{R}$, to the task's prediction compared to the average prediction for the dataset.
 We propose a study of their usage as interpretable weights in weighted majority votes for crowdsourcing classification tasks.
 
 \section{Notation and related work}
@@ -91,7 +91,7 @@ For any set $\mathcal{S}$, we write $|\mathcal{S}|$ for its cardinality.
 The indicator function is denoted $\mathds{1}(\cdot)$.
 
 On released datasets, to compute performance metrics, partial true labels are made available.
-We denote $\mathcal{D}_\text{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\text{test}$ the set of tasks without their true labels available at test time.
+We denote $\mathcal{D}_\text{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\text{test}$ the set of tasks with known true labels. Note that these true labels are only used at test time.
 Both workers and aggregation strategies do not have access to the true labels. Their goal is to recover it.
 
 The impact of a worker is evaluated by a value function $\nu:2^{[n_\text{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\text{worker}]$ and any worker $j_0\notin S$, $\nu(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. Note that in a classification setting with probability output, the value function is the probability given to the predicted label.
@@ -110,7 +110,7 @@ Let us detail existing label aggregation strategies that fit into this framework
   \item MV: The majority vote strategy assigns the label that has been chosen by the majority of the workers. It can be written as:
     \begin{equation}
       \label{eq:mv}
-      \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i, 1).
+      \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i, w).
     \end{equation}
     This is the most simple weights assignment, where all workers have the same weight. Notice that any fixed weight $\gamma>0$ instead of $1$ would result in the same aggregated label, we chose $\gamma=1$ for simplification.
     \item WAWA \citep{appen_wawa_2021}: This strategy, also known as the inter-rater agreement, weights each user by how much they agree with the MV labels on average. More formally, given a task $i$:
@@ -162,13 +162,13 @@ Let us detail existing label aggregation strategies that fit into this framework
     \hat y_i^{\text{KOS}} = \mathrm{WMV}(i, w)\quad \text{with}\quad w(j,k)=\sum_{j\in\partial_i}y_{j\rightarrow i}\enspace.
   \end{equation}
   The worker's weight is estimated iteratively inspired by the belief propagation algorithm to look at the worker agreements on neighboring tasks.
-  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of each worker as a vector $s\in\mathbb{R}^K_+$. Each entry $s_k$ represents the probability of the worker answering the label $k\in[K]$ correctly.
+  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of each worker $j$ as a vector $s^j\in\mathbb{R}^K_+$. Each entry $s^j_k$ represents the probability of the worker answering the label $k\in[K]$ correctly.
   This problem can be formulated as a rank-one matrix completion problem per worker defined as:
-  \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=ss^\top \enspace,\]
+  \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=s^j(s^j)^\top \enspace,\]
   where $C$ is the covariance matrix of the workers' answers.
   The final label is a weighted majority vote written:
   \begin{equation}
-    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, w)\quad \text{with}\quad w(j,k)=\log\frac{(K-1)s_k}{1-s_k}\enspace.
+    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, w)\quad \text{with}\quad w(j,k)=\log\frac{(K-1)s^j_k}{1-s^j_k}\enspace.
   \end{equation}
 \end{itemize}
 
@@ -287,7 +287,9 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
 
 From the real datasets, we can explore how the number of workers impacts the performance of the different label aggregation strategies.
 To do so, given a dataset, we randomly choose the same subset of $5$ workers for the label aggregation strategies.
-The, we add workers one by one, chosen uniformly at random, and evaluate the accuracy and F1 score of the label aggregation strategies with the new set of workers.
+Then, we add workers one by one, chosen uniformly at random, and evaluate the accuracy and F1 score of the label aggregation strategies with the new set of workers.
+
+
 
 \subsection{More information on workers}
 
