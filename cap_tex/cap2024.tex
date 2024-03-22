@@ -89,6 +89,8 @@ For a task $x_i$ and each $j \in \mathcal{A}(x_i)$, we denote $\smash{y_i^{(j)}\
 Given an aggregation strategy \texttt{agg} (such as MV), we denote aggregated label $\hat y^{\texttt{agg}}_i\in[K]$.
 For any set $\mathcal{S}$, we write $|\mathcal{S}|$ for its cardinality.
 The indicator function is denoted $\mathds{1}(\cdot)$.
+The matrix full of ones of size $n\times m$ is denoted $\mathbf{1}_{n\times m}$.
+The row of a matrix $M$ indexed by $i$ is denoted $M_{i,:}$ and the column indexed by $j$ is $M_{:,j}$.
 
 On released datasets, to compute performance metrics, partial true labels are made available.
 We denote $\mathcal{D}_\text{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\text{test}$ the set of tasks with known true labels. Note that these true labels are only used at test time.
@@ -101,57 +103,69 @@ The impact of a worker is evaluated by a value function $\nu:2^{[n_\text{worker}
 In this work, we focus on label aggregation strategies as weighted Majority Votes \citep{littlestone1994weighted} -- \emph{i.e.} that can be written as:
 \begin{equation}
   \label{eq:wmv_general}
-  \hat{y}_i = \text{WMV}(i, w):=\argmax_{k \in [K]} \sum_{j\in\mathcal{A}(x_i)} w(j,k) \mathds{1}(y_i^{(j)} = k),
+  \hat{y}_i = \text{WMV}(i, W):=\argmax_{k \in [K]} \sum_{j\in\mathcal{A}(x_i)} w_{j,k} \mathds{1}(y_i^{(j)} = k),
 \end{equation}
-with $w(j,k): [n_\text{worker}]\times [K]\rightarrow \mathbb{R}_+$ is the function assiging the weight of worker $j$ for their answer given a class $k$. This weight function is the cornerstone of each aggregation strategy.
+where $W \in \mathbb{R}_+^{[n_\text{worker}]\times [K]}$ is the matrix assiging the weight of worker $j$ for their answer given a class $k$.
+We denote $w_{j,k}>0$ the weight of worker $j$ for class $k$.
+This weight matrix is the cornerstone of each aggregation strategy.
 
 Let us detail existing label aggregation strategies that fit into this framework.
 \begin{itemize}
   \item MV: The majority vote strategy assigns the label that has been chosen by the majority of the workers. It can be written as:
     \begin{equation}
       \label{eq:mv}
-      \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i, w).
+      \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i, \mathbf{1}_{n_\text{worker}\times K})\enspace.
     \end{equation}
-    This is the most simple weights assignment, where all workers have the same weight. Notice that any fixed weight $\gamma>0$ instead of $1$ would result in the same aggregated label, we chose $\gamma=1$ for simplification.
+    This is the most simple weights assignment, where all workers have the same weight.
     \item WAWA \citep{appen_wawa_2021}: This strategy, also known as the inter-rater agreement, weights each user by how much they agree with the MV labels on average. More formally, given a task $i$:
     \begin{equation}
-      \hat{y}_i^\text{WAWA}= \mathrm{WMV}\left(i, w\right),\quad
-      \text{with}\quad w(j, k) = \frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_{i'}^\text{MV}\right)\enspace.
+      \hat{y}_i^\text{WAWA}= \mathrm{WMV}\left(i,W\right),\quad
+      \text{with}\quad W_{j,:} = \left(\frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_{i'}^\text{MV}\right)\right)\mathbf{1}_{K}\enspace.
     \end{equation}
+    It allows us to easily compute a weight for each worker and improve the MV strategy.
     \item ZBS \citep{CrowdKit2023}: The Zero-Based Skill aggregation is a gradient descent (GD)-based version of the WAWA strategy.
     First, the labels are estimated using the MV aggregation. Then, we perform a descent step on the weights to minimize the squared error between the current worker's weight and the weight assigned by the WAWA strategy. Finally, the aggregated labels are recomputed using the WMV strategy. This loop is repeated until the convergence of the labels.
     \begin{algorithm}
       \caption{Zero Based Skill algorithm.}
       \begin{algorithmic}[1]
         \State \textbf{Input:} $\eta>0$ the learning rate, $t_{\max}>0$ maximum number of iterations,
-      \State Initialize weights at step $0$: $w^0(j,k)=1/K$ for each worker $j\in [n_\text{worker}]$
+      \State Initialize weights at step $0$: $W^0=\frac{1}{K} \mathbf{1}_{n_\text{worker}\times K}$.
         \For{$t=1,\dots, t_{\max}$}
-            \State Update labels: $\hat{y}_i^{t} = \mathrm{WMV}(i, w^{t-1})$
-            \State Compute current accuracy by worker: $a_j =\frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_i^t\right)$
-            \State Update weights: $w^t(j,\cdot) = w^{t-1}(j,\cdot) - \eta (w^{t-1}(j,\cdot)-a_j)$
+            \State Update labels: $\hat{y}_i^{t} = \mathrm{WMV}(i, W^{t-1})$ for $i\in [n\text{task}]$
+            \State Compute current accuracy by worker: $a_j =\left(\frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_i^t\right)\right)\mathbf{1}_K$
+            \State Update weights for each worker $j\in [n_\text{worker}]$: $W^t_{j,:} = W^{t-1}_{j, :} - \eta (W^{t-1}_{j,:}-a_j)$
         \EndFor
         \State \textbf{Output:} $\hat{y}_i^\text{ZBS} = \hat{y_i}^{t_{\max}}$.
       \end{algorithmic}
       \end{algorithm}
+
     At the end, the last label's iterate is computed as a weighted majority vote from the last iterates of the estimated weights.
 
   \item WDS \citep{dawid_maximum_1979}: This strategy is based on the Dawid-Skene model.Each worker is associated to its confusion matrix $\pi^{(j)}\in\mathbb{R}^{K\times K}$ such that the $(k,\ell)$-entry represents the probability for worker $j$ to answer $\ell\in[K]$ when the unknown true label is $k\in[K]$. Each term on the diagonal represents the ability of the worker to answer correctly the underlying label.
   Using this DS diagonal, we obtain a weighted majority vote denoted WDS:
   \begin{equation}
-    \hat{y}_i^\text{WDS}= \mathrm{WMV}\left(i, w\right),\quad
-    \text{with}\quad w(j,k) = \pi^{(j)}_{k,k}\enspace.
+    \hat{y}_i^\text{WDS}= \mathrm{WMV}\left(i, W\right),\quad
+    \text{with}\quad w_{j,k} = \pi^{(j)}_{k,k}\enspace.
   \end{equation}
-  \item KOS \citep{karger2011iterative}: Only set for binary classification $K=1$, the KOS strategy from a graph-theory perspective.
+  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of each worker $j$ as a vector $s^j\in\mathbb{R}^K_+$. Each entry $s^j_k$ represents the probability of the worker answering the label $k\in[K]$ correctly.
+  This problem can be formulated as a rank-one matrix completion problem per worker defined as:
+  \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=s^j(s^j)^\top \enspace,\]
+  where $C$ is the covariance matrix of the workers' answers.
+  The final label is a weighted majority vote written:
+  \begin{equation}
+    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad w_{j,k}=\log\frac{(K-1)s^j_k}{1-s^j_k}\enspace.
+  \end{equation}
+  \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$, the KOS strategy from a graph-theory perspective.
   Denote $G([n_\text{task}]\cup [n_\text{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
-  On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in[K]$.
+  On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in\{-1,1\}$.
 
   The KOS strategy estimates how much a worker is reliable by how much their answers are consistent with the answers of their neighbors and the likelihood of a task having $y_i^\star=1$.
   Both pieces of information are propagated into the graph as messages.
   The final label is then estimated by the sign of the sum of the messages received by the task weighted by the workers' reliability.
 
-  A task message denoted $x_{i\rightarrow j}$ is the log-likelihood of the task $i$ having $y_i^\star=1$.
-  A worker message denoted $y_{j\rightarrow i}$ is the reliability of worker $j$.
-  Both messages have scalar values.
+  A task message denoted $x_{i\rightarrow j}\in\mathbb{R}$ is the log-likelihood of the task $i$ having $y_i^\star=1$.
+  A worker message denoted $y_{j\rightarrow i}\mathbb{R}$ is the reliability of worker $j$ for task $i$.
+  Both messages are real values.
   After Gaussian random initialization, the messages are updated iteratively until convergence following the equations:
   \begin{align*}
       x_{i\rightarrow j} &\gets \sum_{j'\in \partial_i\setminus \{j\}} y_i^{(j')}y_{j'\rightarrow i} \ \forall (i,j)\in E \\
@@ -159,18 +173,14 @@ Let us detail existing label aggregation strategies that fit into this framework
   \end{align*}
   Finally, the estimated label is computed as:
   \begin{equation}
-    \hat y_i^{\text{KOS}} = \mathrm{WMV}(i, w)\quad \text{with}\quad w(j,k)=\sum_{j\in\partial_i}y_{j\rightarrow i}\enspace.
+    \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\text{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{1\times K}\enspace.
   \end{equation}
   The worker's weight is estimated iteratively inspired by the belief propagation algorithm to look at the worker agreements on neighboring tasks.
-  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of each worker $j$ as a vector $s^j\in\mathbb{R}^K_+$. Each entry $s^j_k$ represents the probability of the worker answering the label $k\in[K]$ correctly.
-  This problem can be formulated as a rank-one matrix completion problem per worker defined as:
-  \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=s^j(s^j)^\top \enspace,\]
-  where $C$ is the covariance matrix of the workers' answers.
-  The final label is a weighted majority vote written:
-  \begin{equation}
-    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, w)\quad \text{with}\quad w(j,k)=\log\frac{(K-1)s^j_k}{1-s^j_k}\enspace.
-  \end{equation}
+  Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\text{task}$ weight matrices.
+
 \end{itemize}
+Note that depending on the strategy, the weights $w_{j,k}$ might not be upper-bounded. Indeed, in WAWA as the weight is the accuracy, it is at most $1$. However, KOS strategy does not have an upper bound on the weights.
+If the weights are not upper-bounded, the more a worker answers following other workers, the more weight they will accumulate. This kind of strategy rewards engagement.
 
 \section{Shapley label aggregation for crowdsourcing}
 \label{sec:shapagg}
@@ -209,13 +219,13 @@ The contribution of a worker $j_0\in[n_\text{worker}]$ on a single task $i_0\in 
   \caption{Shapley label aggregation strategy.}\label{alg:shap}
   \begin{algorithmic}[1]
     \State \textbf{Input:} classifier $\mathcal{C}$, $t_{\max}>0$ maximum number of iterations
-  \State Initialize labels with MV: $\hat{y}_i^0 = \mathrm{WMV}(i, 1)$ for each task $i\in [n_\text{task}]$
+  \State Initialize labels with MV: $\hat{y}_i^0 = \mathrm{WMV}(i, \mathbf{1}_{n_\text{worker}\times K})$ for each task $i\in [n_\text{task}]$
     \For{$t=0,\dots, t_{\max} - 1 $}
         \State Train classifier $\mathcal{C}$ on $\{(x_i, \hat{y}_i^t)_{i\in [n_\text{task}]}\}$
-        \State Compute Shapley values' total contribution of each worker:
+        \State Compute Shapley values' total contribution of each worker $j\in [n_\text{worker}]$:
         \[ \mathrm{contrib}(j) = \sum_{i=1}^{n_\text{task}} |\phi_{j}(i)|\enspace. \]
-        \State Update weights: $w^t(j,\cdot) = \mathrm{contrib}(j)$
-        \State Update labels with WMV: $\hat{y}_i^{t+1} = \mathrm{WMV}(i, w^{(t)})$ for $i\in[n_\text{task}]$.
+        \State Update weights: $W^t_{j,:} = \mathrm{contrib}(j)\mathbf{1}_K$ for each worker $j\in [n_\text{worker}]$
+        \State Update labels with WMV: $\hat{y}_i^{t+1} = \mathrm{WMV}(i, W^{t})$ for $i\in[n_\text{task}]$.
     \EndFor
     \State \textbf{Output:} $\hat{y}_i^\text{shapley} = \hat{y_i}^{t_{\max}}$.
   \end{algorithmic}
