@@ -242,7 +242,7 @@ The contribution of a worker $j_0\in[n_\texttt{worker}]$ on a single task $i_0\i
     \State \textbf{Input:} classifier $\mathcal{C}$, $t_{\max}>0$ maximum number of iterations
   \State Initialize labels with MV: $\hat{y}_i^0 = \mathrm{WMV}(i, \mathbf{1}_{n_\texttt{worker}\times K})$ for each task $i\in [n_\texttt{task}]$
     \For{$t=0,\dots, t_{\max} - 1 $}
-        \State Train classifier $\mathcal{C}$ on $\{(x_i, \hat{y}_i^t)_{i\in [n_\texttt{task}]}\}$
+        \State Train classifier $\mathcal{C}$ on $\{(\mathbf{Y}, \hat{y}_i^t)_{i\in [n_\texttt{task}]}\}$ (workers' answers and current aggregated labels)
         \State Compute Shapley values' total contribution of each worker $j\in [n_\texttt{worker}]$:
         \[ \mathrm{contrib}(j) = \sum_{i=1}^{n_\texttt{task}} |\phi_{j}(i)|\enspace. \]
         \State Update weights: $W^t_{j,:} = \mathrm{contrib}(j)\mathbf{1}_K$ for each worker $j\in [n_\texttt{worker}]$
@@ -287,6 +287,8 @@ This score is commonly used to evaluate the balance between precision and recall
 These metrics are evaluated on several real datasets.
 The BlueBirds dataset \citep{WelinderEtal10b} is a binary classification ($K=2$) dataset with $n_\texttt{task}=108$ tasks and $n_\texttt{worker}=39$ workers. Workers were asked to identify if there was a blue bird of the species Indigo Bunting in the presented image.
 The Temporal Ordering (Temp) \citep{snow_cheap_2008} dataset is a binary classification dataset with $n_\texttt{task}=462$ tasks and $n_\texttt{worker}=76$ workers. Workers were presented with sentences with events and asked if the event presented in the first sentence occurred before the one in the second sentence.
+The LabelMe dataset \citep{rodrigues2018deep} consists of $n_\texttt{task}=1000$ images shown to $n_\texttt{worker}=77$ workers. The task was to classify the image into one of the $K=8$ classes.
+Finally, the Music dataset \citep{rodrigues2014gaussian} is a music genre classification for $n_\texttt{task}=700$ samples annotated by $n_\texttt{worker}=44$ workers. There are $K=10$ different music genres to be assigned to each task.
 
 \section{Results}
 \label{sec:results}
@@ -298,22 +300,22 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
 
 \begin{table}[h]
   \centering
-  \caption{Accuracy and F1 Score of the WMV-based label aggregation strategies over 4 real datasets.}
+  \caption{Accuracy and F1 Score of the WMV-based label aggregation strategies over 4 real datasets: BlueBirds, Temp, LabelMe and Music. We obtain equal or better performance in accuracy and F1 score for 3 out of the 4 datasets.}
   \label{tab:scores}
   \footnotesize{
   \begin{tabular}{l|cc|cc|cc|cc}
   \hline
-  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds}} & \multicolumn{2}{c|}{\textbf{Temp}} & \multicolumn{2}{c|}{\textbf{LabelMe}} & \multicolumn{2}{c}{\textbf{Df 4}} \\
+  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds}} & \multicolumn{2}{c|}{\textbf{Temp}} & \multicolumn{2}{c|}{\textbf{LabelMe}} & \multicolumn{2}{c}{\textbf{Music}} \\
   \cline{2-9}
    & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} \\
   \hline
-  MV    & 0.759 & 0.742 & 0.569 & 0.385 & 0.769 & 0.765 & 0. & 0. \\
-  WAWA  & 0.759 & 0.742 & 0.945 & 0.945 & 0.770 & 0.766 & 0. & 0. \\
-  ZBS   & 0.648 & 0.623 & 0.943 & 0.943 & 0.774 & 0.769 & 0. & 0. \\
-  WDS   & 0.759 & 0.736 & 0.945 & 0.945 & 0.736 & 0.724 & 0. & 0. \\
+  MV    & 0.759 & 0.742 & 0.569 & 0.385 & 0.769 & 0.765 & 0.711 & 0.744 \\
+  WAWA  & 0.759 & 0.742 & \textbf{0.945} & \textbf{0.945} & 0.770 & 0.766 & 0.797 & 0.801 \\
+  ZBS   & 0.648 & 0.623 & 0.943 & 0.943 & 0.774 & 0.769 & \textbf{0.800} & \textbf{0.804} \\
+  WDS   & 0.759 & 0.736 & \textbf{0.945} & \textbf{0.945} & 0.736 & 0.724 & 0.794 & 0.797 \\
   KOS   & 0.722 & 0.678 & 0.569 & 0.384 & --- & --- & --- & --- \\
-  M-MSR & 0.639 & 0.578 & 0.924 & 0.922 & 0.767 & 0.761 & 0. & 0. \\
-  \rowcolor{lightgray} Shapley & \textbf{0.805}& \textbf{0.794}& \textbf{0.945} & \textbf{0.945} & \textbf{0.777} & \textbf{0.762} & & \\
+  M-MSR & 0.639 & 0.578 & 0.924 & 0.922 & 0.767 & 0.761 & 0.742 & 0.744 \\
+  \rowcolor{lightgray} Shapley & \textbf{0.805}& \textbf{0.794}& \textbf{0.945} & \textbf{0.945} & \textbf{0.777} & \textbf{0.762} & 0.760 & 0.765  \\
 
   \hline
   \end{tabular}
