@@ -303,17 +303,17 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
   \footnotesize{
   \begin{tabular}{l|cc|cc|cc|cc}
   \hline
-  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds}} & \multicolumn{2}{c|}{\textbf{Temp}} & \multicolumn{2}{c|}{\textbf{Df 3}} & \multicolumn{2}{c}{\textbf{Df 4}} \\
+  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds}} & \multicolumn{2}{c|}{\textbf{Temp}} & \multicolumn{2}{c|}{\textbf{LabelMe}} & \multicolumn{2}{c}{\textbf{Df 4}} \\
   \cline{2-9}
    & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} \\
   \hline
-  MV    & 0.759 & 0.742 & 0.569 & 0.385 & 0. & 0. & 0. & 0. \\
-  WAWA  & 0.759 & 0.742 & 0.945 & 0.945 & 0. & 0. & 0. & 0. \\
-  ZBS   & 0.648 & 0.623 & 0.943 & 0.943 & 0. & 0. & 0. & 0. \\
-  WDS   & 0.759 & 0.736 & 0.945 & 0.945 & 0. & 0. & 0. & 0. \\
-  KOS   & 0.630 & 0.570 & 0.569 & 0.384 & --- & --- & --- & --- \\
-  M-MSR & 0.639 & 0.578 & 0.924 & 0.922 & 0. & 0. & 0. & 0. \\
-  \rowcolor{lightgray} Shapley & \textbf{0.805}& \textbf{0.794}& \textbf{0.945} & \textbf{0.945} & & & & \\
+  MV    & 0.759 & 0.742 & 0.569 & 0.385 & 0.769 & 0.765 & 0. & 0. \\
+  WAWA  & 0.759 & 0.742 & 0.945 & 0.945 & 0.770 & 0.766 & 0. & 0. \\
+  ZBS   & 0.648 & 0.623 & 0.943 & 0.943 & 0.774 & 0.769 & 0. & 0. \\
+  WDS   & 0.759 & 0.736 & 0.945 & 0.945 & 0.736 & 0.724 & 0. & 0. \\
+  KOS   & 0.722 & 0.678 & 0.569 & 0.384 & --- & --- & --- & --- \\
+  M-MSR & 0.639 & 0.578 & 0.924 & 0.922 & 0.767 & 0.761 & 0. & 0. \\
+  \rowcolor{lightgray} Shapley & \textbf{0.805}& \textbf{0.794}& \textbf{0.945} & \textbf{0.945} & \textbf{0.777} & \textbf{0.762} & & \\
 
   \hline
   \end{tabular}
