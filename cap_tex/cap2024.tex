@@ -27,7 +27,7 @@
 \definecolor{lightgray}{RGB}{230,230,230}
 %\renewcommand{\theta}{\uptheta}
 \DeclareMathOperator*{\argmax}{arg\,max}
-\title{Exemple d'article au format CAp'2024}
+\title{Label aggregation in crowdsourcing using Shapley values}
 \author[1]{Tanguy Lefort\thanks{tanguy.lefort@umontpellier.fr}}
 \author[2]{Benjamin Charlier}
 \author[3]{Alexis Joly}
@@ -72,7 +72,7 @@ The Shapley value is a concept originating from cooperative game theory that has
 Shapley values have been used in the context of data valuation in classification \citep{schoch2022cs} and active learning \citep{ghorbani2022data}. Here, we propose to extend it to classification in a crowdsourcing setting.
 
 If we consider that each worker is a feature and each task is a sample point, given a classifier, the Shapley value explains the contribution of each worker to the predicted outcome at each queried task \citep{molnar2020interpretable}.
-% More specifically, for a given task $i$, the value of the worker $j$ contribution, denoted $\phi_j(i)\in\mathbb{R}$, to the task's prediction compared to the average prediction for the dataset.
+Shapley values are used as worker importance indicators that can handle interactions between workers' answers \citep{owen2017shapley,lundberg2017unified}.
 We propose a study of their usage as interpretable weights in weighted majority votes for crowdsourcing classification tasks.
 
 \section{Notation and related work}
@@ -94,7 +94,10 @@ On released datasets, to compute performance metrics, partial true labels are ma
 We denote $\mathcal{D}_\texttt{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\texttt{test}$ the set of tasks with known true labels. Note that these true labels are only used at test time.
 Both workers and aggregation strategies do not have access to the true labels. Their goal is to recover it.
 
-The impact of a worker is evaluated by a value function $\nu:2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\texttt{worker}]$ and any worker $j_0\notin S$, $\nu(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. Note that in a classification setting with probability output, the value function is the score given to the predicted label. This score is then converted to a probability using a softmax function.
+The impact of a worker on a task $x\in\mathcal{X}$ for a classifier $f$ is evaluated by a value function $\nu_{x,f}:2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\texttt{worker}]$ and any worker $j_0\notin S$, $\nu_{x,f}(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. In a classification setting with output $f(x)$, the value function over a set $S\subseteq [n_\texttt{worker}]$ of workers is defined as
+\begin{equation}\label{eq:nu}
+  \nu_{x,f}(S) = \mathbb{E}[f(x)|x_S] \enspace.
+\end{equation}
 
 \paragraph{Existing weighted label aggregation strategies.}
 
@@ -117,7 +120,7 @@ Let us detail existing label aggregation strategies that fit into this framework
       \label{eq:mv}
       \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i,\mathbf{1}_{n_\texttt{worker}\times K})\enspace.
     \end{equation}
-    This is the most simple weights assignment, where all workers share the same weight, for all labels.
+    This is the most simple weights assignment, where all workers share the same weight.
     \item WAWA \citep{appen_wawa_2021}: This strategy, also known as the inter-rater agreement, weights each user by how much they agree with the MV labels on average. More formally, given a task $i$:
     \begin{equation}
       \hat{y}_i^\text{WAWA}= \mathrm{WMV}\left(i,W\right),\quad
@@ -150,36 +153,39 @@ Let us detail existing label aggregation strategies that fit into this framework
     \hat{y}_i^\text{WDS}= \mathrm{WMV}\left(i, W\right),\quad
     \text{with}\quad W_{j,k} = \pi^{(j)}_{k,k}\enspace.
   \end{equation}
-  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of all workers as a vector $s\in\mathbb{R}^{n_\texttt{worker}}$. Each entry $s_j$ represents the probability of the worker $j$ of answering correctly.
-  This problem can be formulated as a rank-one matrix completion problem per worker defined as:
+  \item M-MSR \citep{ma2020adversarial}: The Matrix Mean-Subsequence-Reduced strategy considers the reliability of all workers as a vector $s\in\mathbb{R}^{n_\texttt{worker}}$. Each entry $s_j$ represents the reliability of the worker $j$.
+  This strategy assumes that each worker answers independently. It also assumes that a worker is correct with probability $p_j\in[0,1]$ and the worker's probability of being wrong is uniform across classes, \emph{i.e.}:
+  \[\forall (i,j)\in [n_\texttt{task}]\times [n_\texttt{worker}],\ \begin{cases} \mathbb{P}(y_i^{(j)}=k)=p_j & \text{if } y_i^\star=k, \\ \mathbb{P}(y_i^{(j)}=k)=\frac{1-p_j}{K-1} & \text{if } y_i^\star\neq k\end{cases} \enspace.\]
+  The reliability of a worker is linked to its probability of answering correctly: $s_j = \frac{K}{K-1}p_j - \frac{1}{K-1}$.
+  This reliability can be estimated by solving a rank-one matrix completion problem defined as:
   \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=ss^\top \enspace,\]
   where $C$ is the covariance matrix of the workers' answers.
-  The final label is a weighted majority vote written:
+  More precisely, given two workers $j,j' \in [n_\texttt{worker}]$, the covariance between them is $C_{j,j'} = \frac{1}{N_{j,j'}}\sum_{i=1}^{n_\texttt{task}} \mathds{1}(y_i^{(j)}=y_i^{(j')})$, with $N_{j,j'}$ the number of tasks in common: $N_{j,j'}=|\{i|j,j'\in\mathcal{A}(x_i)\}|$.
+
+  The final label is a weighted majority vote:
   \begin{equation}
-    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad W_{j,k}=\log\frac{(K-1)s^j_k}{1-s^j_k}\enspace.
+    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad W_{j,k}=\log\frac{(K-1)p_j}{1-p_j}\enspace.
   \end{equation}
   % XXX Expectation C, and the model itself are a bit obscure, we should detail this more.
 
   % XXX : we should drop this strategy, or reduce it drastically as it is not adapted to non-binary settings.
-  \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$, the KOS strategy from a graph-theory perspective.
-  Denote $G([n_\texttt{task}]\cup [n_\texttt{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
-  On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in\{-1,1\}$.
-
+  \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$ ($y_i^\star\in\{\pm 1\}$) the KOS strategy from a graph-theory perspective.
   The KOS strategy estimates the reliability of a worker based on the consistency of their answers with those of their neighbors and the likelihood of a task having $y_i^\star=1$.
-  Both pieces of information are propagated into the graph as messages.
-  The final label is then estimated by the sign of the sum of the messages received by the task weighted by the workers' reliability.
-
-  A task message denoted $x_{i\rightarrow j}\in\mathbb{R}$ is the log-likelihood of the task $i$ having $y_i^\star=1$.
-  A worker message denoted $y_{j\rightarrow i}\mathbb{R}$ is the reliability of worker $j$ for task $i$.
-  Both messages are real values.
-  After Gaussian random initialization, the messages are updated iteratively until convergence following the equations:
-  \begin{align*}
-      x_{i\rightarrow j} &\gets \sum_{j'\in \partial_i\setminus \{j\}} y_i^{(j')}y_{j'\rightarrow i} \ \forall (i,j)\in E \\
-      y_{j\rightarrow i} &\gets \sum_{i'\in \partial_j\setminus \{i\}} y_{i'}^{(j)} x_{i'\rightarrow j} \ \forall (i,j)\in E\enspace.
-  \end{align*}
+  % Denote $G([n_\texttt{task}]\cup [n_\texttt{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
+  % On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in\{-1,1\}$.
+  % The KOS strategy estimates the reliability of a worker based on the consistency of their answers with those of their neighbors and the likelihood of a task having $y_i^\star=1$.
+  % Both pieces of information are propagated into the graph as messages.
+  % The final label is then estimated by the sign of the sum of the messages received by the task weighted by the workers' reliability.
+  The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers. A task message denoted $x_{i\rightarrow j}\in\mathbb{R}$ is the log-likelihood of the task $i$ having $y_i^\star=1$.
+  A worker message denoted $y_{j\rightarrow i}\in\mathbb{R}$ is the reliability of worker $j$ for task $i$.
+  % Both messages are real values.
+  The messages are updated iteratively until convergence following the equations:
+  \begin{equation*}
+      x_{i\rightarrow j} \gets \sum_{j'\in \partial_i\setminus \{j\}} y_i^{(j')}y_{j'\rightarrow i} \quad \text{and}\quad y_{j\rightarrow i} \gets \sum_{i'\in \partial_j\setminus \{i\}} y_{i'}^{(j)} x_{i'\rightarrow j} \enspace.
+  \end{equation*}
   Finally, the estimated label is computed as:
   \begin{equation}
-    \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\texttt{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{1\times K}\enspace.
+    \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\texttt{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{K}\enspace.
   \end{equation}
   The worker's weight is estimated iteratively inspired by the belief propagation algorithm to look at the worker agreements on neighboring tasks.
   Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\texttt{task}$ weight matrices.
@@ -203,7 +209,6 @@ In \Cref{fig:weights_by_strat} we show how each strategy leads to different weig
 
 Shapley values have been used to quantify the contribution of individual features in machine learning models' prediction \citep{molnar2020interpretable}.
 In the context of crowdsourcing, we propose to use Shapley values to quantify the contribution of each worker to the final label aggregation.
-We first recall the definition of a Shapley value.
 
 % XXX might be easier to instantiate in your context with: $T=[n_\texttt{worker}]$. One letter spared. and T could be silent.
 % Done
@@ -211,38 +216,37 @@ We first recall the definition of a Shapley value.
 % XXX why not only using $\phi_j(i)$ since $T$ and $\nu$ will be fixed
 
 \begin{definition}
-Given a set of $n_\texttt{worker}$ workers, and a value function $\nu(\cdot): 2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$ the Shapley value of a worker $j$ for a task $i$ is defined as the average marginal contribution of the worker $j$ to every subset of $[n_\texttt{worker}]\setminus\{j\}$:
+Given a set of $n_\texttt{worker}$ workers, a classifier $f$, a task $x_i\in\mathcal{X}$ and a value function $\nu_{x_i, f}(\cdot): 2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$ the Shapley value of a worker $j$ for a task $i$ is defined as the average marginal contribution of the worker $j$ to every subset of $[n_\texttt{worker}]\setminus\{j\}$:
 \begin{equation}
-  \phi_j(i, \nu) = \sum_{S\subseteq [n_\texttt{worker}]\setminus\{j\}} \frac{|S|!(n-|S|-1)!}{n!} \left[\nu(S\cup\{j\}) - \nu(S)\right]\enspace.
+  \phi_j(i, \nu) = \sum_{S\subseteq [n_\texttt{worker}]\setminus\{j\}} \frac{|S|!(n-|S|-1)!}{n!} \left[\nu_{x_i, f}(S\cup\{j\}) - \nu_{x_i, f}(S)\right]\enspace.
 \end{equation}
 When there is no ambiguity over the value function, we adopt the standard notation abuse $\phi_j(i, \nu)=\phi_j(i)$.
 \end{definition}
 
-Shapley values satisfy the following properties:
+Shapley values satisfy the following properties -- given a task $x$ and a classifier $f$:
 \begin{itemize}
-  \item Symmetry: if $\nu(S\cup\{p\})=\nu(S\cup\{q\})$ for all set $S\subseteq [n_\texttt{worker}]\setminus\{p,q\}$, then $\phi_p=\phi_q$.
-  \item Null worker: if $\nu(S\cup\{p\})=\nu(S)$ for $S\subseteq [n_\texttt{worker}]$ then $\phi_p=0$.
-  \item Additivity: for two value functions $\nu_1$ and $\nu_2$, $\phi_j(\nu_1+\nu_2)=\phi_j(\nu_1)+\phi_j(\nu_2)$.
-  \item Efficiency: $\sum_{j=1}^{n_\texttt{worker}} \phi_j(\nu)=\nu([n_\texttt{worker}])$.
+  \item Symmetry: if $\nu_{x,f}(S\cup\{p\})=\nu_{x,f}(S\cup\{q\})$ for all set $S\subseteq [n_\texttt{worker}]\setminus\{p,q\}$, then $\phi_p=\phi_q$.
+  \item Null worker: if $\nu_{x,f}(S\cup\{p\})=\nu_{x,f}(S)$ for $S\subseteq [n_\texttt{worker}]$ then $\phi_p=0$.
+  \item Additivity: for two value functions $\nu^1_{x,f}$ and $\nu^2_{x,f}$, $\phi_j(i,\nu^1_{x,f}+\nu^2_{x,f})=\phi_j(i, \nu^1_{x,f})+\phi_j(i, \nu^2_{x,f})$.
+  \item Efficiency: $\sum_{j=1}^{n_\texttt{worker}} \phi_j(\nu)=\nu_{x,f}([n_\texttt{worker}])$.
 \end{itemize}
 
 
 Where the Shapley value is interesting for a crowdsourcing problem, is that if a worker does not help the classifier to predict the label, then its Shapley value will be close to zero. And, two workers with similar contributions will obtain similar Shapley values.
-
 \subsection{Shapley label aggregation strategy}
 
 We introduce the following label aggregation algorithm based on Shapley values.
 It is based on the Expectation-Maximization procedure where we iteratively estimate the labels and the workers' skills until convergence -- \emph{e.g.} stabilization of the skills.
-Given a current estimation of the labels and a classifier $\mathcal{C}$, we consider the skill of each worker as their total contribution to the prediction.
+Given a current estimation of the labels and a classifier $f$, we consider the skill of each worker as their total contribution to the prediction.
 The contribution of a worker $j_0\in[n_\texttt{worker}]$ on a single task $i_0\in [n_\texttt{task}]$ is given as $|\phi_{j_0}(i_0)|\in\mathbb{R}_+$.
 
 \begin{algorithm}[tbh]
   \caption{Shapley label aggregation strategy.}\label{alg:shap}
   \begin{algorithmic}[1]
-    \State \textbf{Input:} classifier $\mathcal{C}$, $t_{\max}>0$ maximum number of iterations
+    \State \textbf{Input:} classifier $f$, $t_{\max}>0$ maximum number of iterations
   \State Initialize labels with MV: $\hat{y}_i^0 = \mathrm{WMV}(i, \mathbf{1}_{n_\texttt{worker}\times K})$ for each task $i\in [n_\texttt{task}]$
     \For{$t=0,\dots, t_{\max} - 1 $}
-        \State Train classifier $\mathcal{C}$ on $\{(\mathbf{Y}, \hat{y}_i^t)_{i\in [n_\texttt{task}]}\}$ (workers' answers and current aggregated labels)
+        \State Train classifier $f$ on $\{(\mathbf{Y}, \hat{y}_i^t)_{i\in [n_\texttt{task}]}\}$ (workers' answers and current aggregated labels)
         \State Compute Shapley values' total contribution of each worker $j\in [n_\texttt{worker}]$:
         \[ \mathrm{contrib}(j) = \sum_{i=1}^{n_\texttt{task}} |\phi_{j}(i)|\enspace. \]
         \State Update weights: $W^t_{j,:} = \mathrm{contrib}(j)\mathbf{1}_K$ for each worker $j\in [n_\texttt{worker}]$
@@ -261,14 +265,12 @@ And, at the same time, it can identify which workers are not contributing to the
 \label{sub:implementation}
 
 To compute Shapley values, we use the \texttt{Shap} library \citep{lundberg2017unified}.
-We use an XGBOOST classifier \citep{chen2016xgboost} as the classifier $\mathcal{C}$.
-
-% Shapley values can thus be XXX?
-
+We choose an XGBOOST classifier \citep{chen2016xgboost} as the classifier $f$.
+In practice, the value function $\nu_{x,f}$ evaluated at a set $S\subseteq [n_\texttt{worker}]$ defined in \Cref{eq:nu} is estimated using the \texttt{TreeSHAP} algorithm \citep{lundberg2018consistent}.
 Label aggregation strategies are implemented in Python using the \texttt{crowd-kit} \citep{CrowdKit2023} or \texttt{peerannot} \citep{peerannot} libraries.
 The XGBOOST classifier is known to have an extensive number of hyperparameters to tune.
 To choose them, we first use the \texttt{optuna} \citep{optuna} library to tune over a $3$-fold cross-validation of best hyperparameters for the set of tasks and label $\{(x_i, \hat{y}_i^0)_{i\in [n_\texttt{task}]}\}$.
-This random search includes the trees' depth, learning rate, the number of trees, the minimum child weight, the subsampling proportion and regularization parameter. These best parameters are then used in \Cref{alg:shap} to iteratively train the XGBOOST model with the current label estimates.
+This random search includes the trees' depth, learning rate, the number of trees, the minimum child weight, the subsampling proportion and regularization parameter. These best parameters are then used in \Cref{alg:shap} to iteratively train the XGBOOST model with the current label estimates. Note that this hyperparameter search can be costly in computation time.
 
 \subsection{Evaluation metrics}
 
@@ -278,11 +280,11 @@ This test set is denoted $\mathcal{D}_\texttt{test}=\{(x_i, y_i^\star)\}_{i=1}^{
 This ground truth is not used during the aggregation, only at evaluation time.
 The accuracy of the aggregation strategy \texttt{agg} is the proportion of correctly predicted labels $(\hat[y]^\texttt{agg}_i)_{i=1}^{n_\texttt{test}}$ over the total number of tasks in $\mathcal{D}_\texttt{test}$ with ground truth in $y^\star=(y_i^\star)_{i=1}^{n_\texttt{test}}$:
 \[\mathrm{Accuracy}(\hat{y}^\texttt{agg}, y^\star) = \frac{1}{n_\texttt{test}}\sum_{i=1}^{n_\texttt{test}} \mathds{1}(\hat{y}^\texttt{agg}_i=y_i^\star) \enspace.\]
-We take into account the possible class imbalance by presenting a macro-average F1 score. Denoting respectively $\mathrm{TP}_k$, $\mathrm{FP}_k$ and $\mathrm{FN}_k$ the true positives, false positives and false negatives related to the class $k\in[K]$, the macro averaged F1-score writes
+We take into account the possible class imbalance by presenting a macro-average F1 score. This score is commonly used to evaluate the balance between precision and recall in classification tasks. It provides a measure of the quality of the label aggregation strategy when dealing with imbalanced datasets.
+Denoting respectively $\mathrm{TP}_k$, $\mathrm{FP}_k$ and $\mathrm{FN}_k$ the true positives, false positives and false negatives related to the class $k\in[K]$, the macro averaged F1-score writes
 \[
 \mathrm{F1} = \frac{1}{K}\sum_{k=1}^K\frac{\mathrm{TP}_k}{\mathrm{TP}_k + 0.5(\mathrm{FN}_k + \mathrm{FP}_k)}\enspace.
 \]
-This score is commonly used to evaluate the balance between precision and recall in classification tasks. It provides a measure of the quality of the label aggregation strategy when dealing with imbalanced datasets.
 
 These metrics are evaluated on several real datasets.
 The BlueBirds dataset \citep{WelinderEtal10b} is a binary classification ($K=2$) dataset with $n_\texttt{task}=108$ tasks and $n_\texttt{worker}=39$ workers. Workers were asked to identify if there was a blue bird of the species Indigo Bunting in the presented image.
@@ -306,7 +308,7 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
   \footnotesize{
   \begin{tabular}{l|cc|cc|cc|cc}
   \hline
-  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds}} & \multicolumn{2}{c|}{\textbf{Temp}} & \multicolumn{2}{c|}{\textbf{LabelMe}} & \multicolumn{2}{c}{\textbf{Music}} \\
+  \multirow{2}{*}{\textbf{Strategy}} & \multicolumn{2}{c|}{\textbf{BlueBirds} $(K=2)$} & \multicolumn{2}{c|}{\textbf{Temp} $(K=2)$} & \multicolumn{2}{c|}{\textbf{LabelMe} $(K=8)$} & \multicolumn{2}{c}{\textbf{Music} $(K=10)$} \\
   \cline{2-9}
    & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} \\
   \hline
@@ -328,13 +330,11 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
 % To do so, given a dataset, we randomly choose the same subset of $5$ workers for the label aggregation strategies.
 % Then, we add workers one by one, chosen uniformly at random, and evaluate the accuracy and F1 score of the label aggregation strategies with the new set of workers.
 
-
-
 \subsection{More information on workers}
 
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=\textwidth]{./../summary_plot_shap_all_bluebirds.pdf}
+  \includegraphics[width=.9\textwidth]{./../summary_plot_shap_all_bluebirds.pdf}
   \caption{Summary of the main contributing workers for the BlueBirds dataset using Shapley values. Left: Worker $0$ has the highest contribution to the final label -- either for class $0$ or $1$, followed by worker $15$. Then, worker $36$ has better identification for class $1$ than class $0$. Right: Average impact of each worker on the final predicted label by the XGBOOST classifier. This worker's contribution scalar value -- used in \Cref{alg:shap} weight $W_{j,:}$ -- does not allow to differentiate between classes.}
   \label{fig:shap_bluebirds}
 \end{figure}
