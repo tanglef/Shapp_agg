@@ -173,8 +173,6 @@ We detail below popular label aggregation strategies that fit into this framewor
   In an EM fashion, a worker message -- the reliability of worker $j$ for task $i$ -- is updated iteratively based on the messages received from the tasks.
   Then, a task message -- the log-likelihood of the task $i$ having $y_i^\star=1$ -- is updated iteratively based on the messages received from the workers.
   The final label is the sign of the sum of the messages received by the task weighted by the workers' reliability.
-
-
   % Denote $G([n_\texttt{task}]\cup [n_\texttt{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
   % On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in\{-1,1\}$.
   % The KOS strategy estimates the reliability of a worker based on the consistency of their answers with those of their neighbors and the likelihood of a task having $y_i^\star=1$.
@@ -195,9 +193,13 @@ We detail below popular label aggregation strategies that fit into this framewor
   % Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\texttt{task}$ weight matrices.
 
 \end{itemize}
-Note that depending on the strategy, the weights $W_{j,k}$ might not be upper-bounded. Indeed, in WAWA as the weight is the accuracy, it is at most $1$. However, KOS strategy does not have an upper bound on the weights.
-If the weights are not upper-bounded, the more a worker answers following other workers, the more weight they will accumulate. This kind of strategy rewards engagement.
-In \Cref{fig:weights_by_strat} we show how each strategy leads to different weights and scales. The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sec:results}.
+Note that depending on the strategy, the weights $W_{j,k}$ might not be upper-bounded.
+% Indeed, in WAWA as the weight is the accuracy, it is at most $1$.
+Indeed, the KOS strategy does not have an upper bound on the weights for instance.
+If the weights are not upper-bounded, the more a worker answers following other workers, the more weight they will accumulate.
+This kind of strategy rewards engagement.
+In \Cref{fig:weights_by_strat} we show how each strategy leads to different weights and scales.
+The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sec:results}.
 
 \begin{figure}[htbp]
   \centering
