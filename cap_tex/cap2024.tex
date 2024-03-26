@@ -168,11 +168,11 @@ We detail below popular label aggregation strategies that fit into this framewor
 
   % XXX : we should drop this strategy, or reduce it drastically as it is not adapted to non-binary settings.
   \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$ ($y_i^\star\in\{\pm 1\}$) the KOS strategy from a graph-theory perspective.
+  The worker's weight is estimated iteratively inspired by the belief propagation algorithm \citep{pearlBelief} to look at the worker agreements on neighboring tasks.
   An edge from a worker to a task indicates that the task was answered by the worker.
-  The KOS strategy estimates the reliability of each worker based on the consistency of their answers with those of their neighbors.
-  In an EM fashion, a worker message -- the reliability of worker $j$ for task $i$ -- is updated iteratively based on the messages received from the tasks.
-  Then, a task message -- the log-likelihood of the task $i$ having $y_i^\star=1$ -- is updated iteratively based on the messages received from the workers.
-  The final label is the sign of the sum of the messages received by the task weighted by the workers' reliability.
+  In an EM fashion, a worker message -- the reliability of worker $j$ for task $i$ -- is stored in a matrix $W \in \mathbb{R}^{n_\texttt{worker}\times n_\texttt{task}}$.
+  Then, the task message -- the likelihood of the task $i$ to be positive -- is sent to the workers as a vector of $\mathbb{R}^{n_\texttt{task}}$.
+  The final label is the sign of the weighted majority votes, with the weight of worker $j$'s answer to task $i$ being equal to $W_{j,i}$.
 
 
   % Denote $G([n_\texttt{task}]\cup [n_\texttt{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
@@ -191,7 +191,6 @@ We detail below popular label aggregation strategies that fit into this framewor
   % \begin{equation}
   %   \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\texttt{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{K}\enspace.
   % \end{equation}
-  The worker's weight is estimated iteratively inspired by the belief propagation algorithm \citep{pearlBelief} to look at the worker agreements on neighboring tasks.
   % Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\texttt{task}$ weight matrices.
 
 \end{itemize}
