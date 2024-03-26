@@ -68,7 +68,7 @@ Moreover, the final interpretation of the aggregation from the workers' votes is
 Weighted MV (WMV) strategies \citep{appen_wawa_2021,karger2011iterative,ma2020adversarial} have proven to be both effective and easy to interpret. Indeed, the method's principle is straightforward: each worker is assigned a weight that represents their reliability. The aggregated label is then the label that reflects the votes of workers relative to their reliability.
 
 In this work, we aim to propose a new weight for WMV based on the Shapley values \citep{shapley1953value}.
-The Shapley value is a concept originating from cooperative game theory that has been used in various fields such as economics \citep{aumann1994economic}, political science \citep{engelbrecht2009use}, and machine learning for explainability \citep{lundberg2017unified} or feature selection \citep{cohen2007feature}.
+The Shapley value is a concept originating from cooperative game theory that has been used in various fields such as economics \citep{aumann1994economic}, political science \citep{engelbrecht2009use}, statistics \citep{owen2014sobol} and machine learning for explainability \citep{lundberg2017unified} or feature selection \citep{cohen2007feature}.
 Shapley values have been used in the context of data valuation in classification \citep{schoch2022cs} and active learning \citep{ghorbani2022data}. Here, we propose to extend it to classification in a crowdsourcing setting.
 
 If we consider that each worker is a feature and each task is a sample point, given a classifier, the Shapley value explains the contribution of each worker to the predicted outcome at each queried task \citep{molnar2020interpretable}.
