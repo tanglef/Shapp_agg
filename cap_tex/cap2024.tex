@@ -167,7 +167,7 @@ We detail below popular label aggregation strategies that fit into this framewor
   % XXX Expectation C, and the model itself are a bit obscure, we should detail this more.
 
   % XXX : we should drop this strategy, or reduce it drastically as it is not adapted to non-binary settings.
-  \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$ ($y_i^\star\in\{\pm 1\}$) the KOS strategy from a graph-theory perspective.
+  \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$, the KOS strategy comes from a graph-theory perspective.
   The worker's weight is estimated iteratively inspired by the belief propagation algorithm \citep{pearlBelief} to look at the worker agreements on neighboring tasks.
   An edge from a worker to a task indicates that the task was answered by the worker.
   In an EM fashion, a worker message -- the reliability of worker $j$ for task $i$ -- is stored in a matrix $W \in \mathbb{R}^{n_\texttt{worker}\times n_\texttt{task}}$.
