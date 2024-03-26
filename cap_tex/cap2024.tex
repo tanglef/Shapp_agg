@@ -94,11 +94,11 @@ On released datasets, to compute performance metrics, partial true labels are ma
 We denote $\mathcal{D}_\texttt{train}$ the set of tasks with their true labels unknown and $\mathcal{D}_\texttt{test}$ the set of tasks with known true labels. Note that these true labels are only used at test time.
 Both workers and aggregation strategies do not have access to the true labels. Their goal is to recover it.
 
-The impact of a worker on a task $x\in\mathcal{X}$ for a classifier $f$ is evaluated by a value function $\nu_{x,f}:2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$  such that for any set of workers $S\subset [n_\texttt{worker}]$ and any worker $j_0\notin S$, $\nu_{x,f}(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. In a classification setting with output $f(x)$, the value function over a set $S\subseteq [n_\texttt{worker}]$ of workers is defined as
+The impact of a worker on a task $x\in\mathcal{X}$, for a classifier $f$, is evaluated by a value function $\nu_{x,f}:2^{[n_\texttt{worker}]}\rightarrow \mathbb{R}$ such that for any set of workers $S\subset [n_\texttt{worker}]$ and any worker $j_0\notin S$, $\nu_{x,f}(S\cup\{j_0\}) - \nu(S)$ is the marginal contribution of worker $j_0$ over $S$. In a classification setting with output $f(x)$, the value function over a set $S\subseteq [n_\texttt{worker}]$ of workers is defined as
 \begin{equation}\label{eq:nu}
   \nu_{x,f}(S) = \mathbb{E}[f(x)|x_S] \enspace.
 \end{equation}
-
+In practice, this quantity has to be estimated, for instance using the \texttt{TreeSHAP} algorithm \citep{lundberg2018consistent}.
 \paragraph{Existing weighted label aggregation strategies.}
 
 In this work, we focus on label aggregation strategies as weighted Majority Votes \citep{littlestone1994weighted} -- \emph{i.e.} that can be written as:
@@ -106,21 +106,20 @@ In this work, we focus on label aggregation strategies as weighted Majority Vote
   \label{eq:wmv_general}
  \forall i \in [n_\texttt{task}], \quad \hat{y}_i = \text{WMV}(i, W):=\argmax_{k \in [K]} \sum_{j\in\mathcal{A}(x_i)} W_{j,k} \mathds{1}(y_i^{(j)} = k),
 \end{equation}
-where $W \in \mathbb{R}^{n_\texttt{worker}\times K}$ is the matrix assigning the weight of worker $j$ for their answer given a class $k$.
+where $W \in \mathbb{R}^{n_\texttt{worker}\times K}$ is the matrix assigning the weight of worker $j$ when answering class $k$.
 We denote $W_{j,k}\in\mathbb{R}$ the weight of worker $j$ for class $k$.
 This weight matrix is the cornerstone of each aggregation strategy.
 % Note that since for any $\alpha \in \mathbb{R}$, $\text{WMV}(i, \alpha W) = \text{WMV}(i, W)$, we can assume that the weights are normalized such that $\sum_{j \in [n_\texttt{worker}]} \sum_{k=1}^K W_{j,k}=n_\texttt{worker}$ for all $j\in[n_\texttt{worker}]$.
 % XXX: this corresponds to the ZBS choice. Actually it could be interesting to check the algorithm keeps this property. I doubt it...meaning that the weights are not normalized in the end. This might be a point to discuss.
 % {XXX : $W_{j,k}\geq 0$ or not? to discuss}
-
-Let us detail existing label aggregation strategies that fit into this framework.
+We detail below popular label aggregation strategies that fit into this framework.
 \begin{itemize}
   \item MV: The majority vote strategy assigns the label that has been chosen by the majority of the workers. It can be written as:
     \begin{equation}
       \label{eq:mv}
       \hat{y}_i^{\text{MV}} = \mathrm{WMV}(i,\mathbf{1}_{n_\texttt{worker}\times K})\enspace.
     \end{equation}
-    This is the most simple weights assignment, where all workers share the same weight.
+    This is the simplest weights assignment, where all workers and all labels share the same weight.
     \item WAWA \citep{appen_wawa_2021}: This strategy, also known as the inter-rater agreement, weights each user by how much they agree with the MV labels on average. More formally, given a task $i$:
     \begin{equation}
       \hat{y}_i^\text{WAWA}= \mathrm{WMV}\left(i,W\right),\quad
@@ -128,7 +127,7 @@ Let us detail existing label aggregation strategies that fit into this framework
     \end{equation}
     It allows us to instantiate a weight that can vary for each worker (but not per task) and it usually improves on the MV strategy.
     \item ZBS \citep{CrowdKit2023}: The Zero-Based Skill aggregation is a gradient descent (GD)-based version of the WAWA strategy.
-    First, the labels are initialized using the MV strategy. Then, we perform a descent step on the weights to minimize the squared error between the current worker's weight and the weight assigned by the WAWA strategy. Finally, the aggregated labels are recomputed using the WMV strategy. This loop is repeated until the convergence of the labels.
+    First, the labels are initialized using the MV strategy. Then, a descent step is performed on the weights to minimize the squared error between the current worker's weight and the weight assigned by the WAWA strategy. Finally, the aggregated labels are recomputed using the WMV strategy. This loop is repeated until convergence.
     \begin{algorithm}
       \caption{Zero Based Skill algorithm.}
       \begin{algorithmic}[1]
@@ -143,7 +142,7 @@ Let us detail existing label aggregation strategies that fit into this framework
       \end{algorithmic}
       \end{algorithm}
 
-    In the end, the last label's iterate is computed as a weighted majority vote from the last iterates of the estimated weights.
+    % In the end, the last label's iterate is computed as a weighted majority vote from the last iterates of the estimated weights.
 
     \item WDS \citep{dawid_maximum_1979}:
     % XXX should we cite Maximilien here? (maximilien n'a pas fait de WDS)
@@ -160,12 +159,11 @@ Let us detail existing label aggregation strategies that fit into this framework
   This reliability can be estimated by solving a rank-one matrix completion problem defined as:
   \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=ss^\top \enspace,\]
   where $C$ is the covariance matrix of the workers' answers.
-  More precisely, given two workers $j,j' \in [n_\texttt{worker}]$, the covariance between them is $C_{j,j'} = \frac{1}{N_{j,j'}}\sum_{i=1}^{n_\texttt{task}} \mathds{1}(y_i^{(j)}=y_i^{(j')})$, with $N_{j,j'}$ the number of tasks in common: $N_{j,j'}=|\{i|j,j'\in\mathcal{A}(x_i)\}|$.
-
-  The final label is a weighted majority vote:
+  More precisely, given two workers $j,j' \in [n_\texttt{worker}]$, the covariance between them is $C_{j,j'} = \frac{1}{N_{j,j'}}\sum_{i=1}^{n_\texttt{task}} \mathds{1}(y_i^{(j)}=y_i^{(j')})$, with $N_{j,j'}$ the number of tasks in common: $N_{j,j'}=|\{i \in [n_\texttt{task}] |j,j'\in\mathcal{A}(x_i)\}|$. The final label is a weighted majority vote:
   \begin{equation}
-    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad W_{j,k}=\log\frac{(K-1)p_j}{1-p_j}\enspace.
+    \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad W_{j,k}=\log\frac{(K-1)p_j}{1-p_j}\enspace,
   \end{equation}
+  where the form of the weights is derived from a maximum a posteriori formulation of the model, see \citep[Corollary 9]{li2014error}.
   % XXX Expectation C, and the model itself are a bit obscure, we should detail this more.
 
   % XXX : we should drop this strategy, or reduce it drastically as it is not adapted to non-binary settings.
