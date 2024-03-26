@@ -168,25 +168,31 @@ We detail below popular label aggregation strategies that fit into this framewor
 
   % XXX : we should drop this strategy, or reduce it drastically as it is not adapted to non-binary settings.
   \item KOS \citep{karger2011iterative}: Only set for binary classification $K=2$ ($y_i^\star\in\{\pm 1\}$) the KOS strategy from a graph-theory perspective.
-  The KOS strategy estimates the reliability of a worker based on the consistency of their answers with those of their neighbors and the likelihood of a task having $y_i^\star=1$.
+  An edge from a worker to a task indicates that the task was answered by the worker.
+  The KOS strategy estimates the reliability of each worker based on the consistency of their answers with those of their neighbors.
+  In an EM fashion, a worker message -- the reliability of worker $j$ for task $i$ -- is updated iteratively based on the messages received from the tasks.
+  Then, a task message -- the log-likelihood of the task $i$ having $y_i^\star=1$ -- is updated iteratively based on the messages received from the workers.
+  The final label is the sign of the sum of the messages received by the task weighted by the workers' reliability.
+
+
   % Denote $G([n_\texttt{task}]\cup [n_\texttt{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
   % On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in\{-1,1\}$.
   % The KOS strategy estimates the reliability of a worker based on the consistency of their answers with those of their neighbors and the likelihood of a task having $y_i^\star=1$.
   % Both pieces of information are propagated into the graph as messages.
   % The final label is then estimated by the sign of the sum of the messages received by the task weighted by the workers' reliability.
-  The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers. A task message denoted $x_{i\rightarrow j}\in\mathbb{R}$ is the log-likelihood of the task $i$ having $y_i^\star=1$.
-  A worker message denoted $y_{j\rightarrow i}\in\mathbb{R}$ is the reliability of worker $j$ for task $i$.
+  % The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers. A task message denoted $x_{i\rightarrow j}\in\mathbb{R}$ is the log-likelihood of the task $i$ having $y_i^\star=1$.
+  % A worker message denoted $y_{j\rightarrow i}\in\mathbb{R}$ is the reliability of worker $j$ for task $i$.
   % Both messages are real values.
-  The messages are updated iteratively until convergence following the equations:
-  \begin{equation*}
-      x_{i\rightarrow j} \gets \sum_{j'\in \partial_i\setminus \{j\}} y_i^{(j')}y_{j'\rightarrow i} \quad \text{and}\quad y_{j\rightarrow i} \gets \sum_{i'\in \partial_j\setminus \{i\}} y_{i'}^{(j)} x_{i'\rightarrow j} \enspace.
-  \end{equation*}
-  Finally, the estimated label is computed as:
-  \begin{equation}
-    \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\texttt{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{K}\enspace.
-  \end{equation}
-  The worker's weight is estimated iteratively inspired by the belief propagation algorithm to look at the worker agreements on neighboring tasks.
-  Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\texttt{task}$ weight matrices.
+  % The messages are updated iteratively until convergence following the equations:
+  % \begin{equation*}
+  %     x_{i\rightarrow j} \gets \sum_{j'\in \partial_i\setminus \{j\}} y_i^{(j')}y_{j'\rightarrow i} \quad \text{and}\quad y_{j\rightarrow i} \gets \sum_{i'\in \partial_j\setminus \{i\}} y_{i'}^{(j)} x_{i'\rightarrow j} \enspace.
+  % \end{equation*}
+  % Finally, the estimated label is computed as:
+  % \begin{equation}
+  %   \hat y_i^{\text{KOS}} = \mathrm{sign}\left(\mathrm{WMV}(i, \{W_i\}_{i\in [n_\texttt{task}]} )\right)\quad \text{with}\quad (W_i)_{j,:}=\sum_{j\in\partial_i}y_{j\rightarrow i}\mathbf{1}_{K}\enspace.
+  % \end{equation}
+  The worker's weight is estimated iteratively inspired by the belief propagation algorithm \citep{pearlBelief} to look at the worker agreements on neighboring tasks.
+  % Note that the KOS strategy is based on a weighted majority vote -- hence why we included it -- but the weights take into account the task's index, thus leading to $n_\texttt{task}$ weight matrices.
 
 \end{itemize}
 Note that depending on the strategy, the weights $W_{j,k}$ might not be upper-bounded. Indeed, in WAWA as the weight is the accuracy, it is at most $1$. However, KOS strategy does not have an upper bound on the weights.
