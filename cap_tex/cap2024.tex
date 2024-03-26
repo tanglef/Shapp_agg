@@ -173,6 +173,8 @@ We detail below popular label aggregation strategies that fit into this framewor
   In an EM fashion, a worker message -- the reliability of worker $j$ for task $i$ -- is updated iteratively based on the messages received from the tasks.
   Then, a task message -- the log-likelihood of the task $i$ having $y_i^\star=1$ -- is updated iteratively based on the messages received from the workers.
   The final label is the sign of the sum of the messages received by the task weighted by the workers' reliability.
+
+
   % Denote $G([n_\texttt{task}]\cup [n_\texttt{worker}], E)$ the graph where edge $(i,j)$ is connected if worker $j$ has answered task $i$. The neighborhood of a task $i$ is denoted $\partial_i$ and the same with index $j$ for workers.
   % On each edge is stored the label answered by worker $j$ for task $i$: $y_i^{(j)}\in\{-1,1\}$.
   % The KOS strategy estimates the reliability of a worker based on the consistency of their answers with those of their neighbors and the likelihood of a task having $y_i^\star=1$.
@@ -197,7 +199,6 @@ Note that depending on the strategy, the weights $W_{j,k}$ might not be upper-bo
 % Indeed, in WAWA as the weight is the accuracy, it is at most $1$.
 Indeed, the KOS strategy does not have an upper bound on the weights for instance.
 If the weights are not upper-bounded, the more a worker answers following other workers, the more weight they will accumulate.
-This kind of strategy rewards engagement.
 In \Cref{fig:weights_by_strat} we show how each strategy leads to different weights and scales.
 The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sec:results}.
 
@@ -318,7 +319,7 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
   \cline{2-9}
    & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Accuracy} & \textbf{F1 Score} \\
   \hline
-  MV    & 0.759 & 0.742 & 0.569 & 0.385 & 0.769 & 0.765 & 0.711 & 0.744 \\
+  MV    & 0.759 & 0.742 & 0.939 & 0.938 & 0.769 & 0.765 & 0.711 & 0.744 \\
   WAWA  & 0.759 & 0.742 & \textbf{0.945} & \textbf{0.945} & 0.770 & 0.766 & 0.797 & 0.801 \\
   ZBS   & 0.648 & 0.623 & 0.943 & 0.943 & 0.774 & 0.769 & \textbf{0.800} & \textbf{0.804} \\
   WDS   & 0.759 & 0.736 & \textbf{0.945} & \textbf{0.945} & 0.736 & 0.724 & 0.794 & 0.797 \\
@@ -341,22 +342,21 @@ Note that the KOS strategy can not be applied to the datasets considered with $K
 \begin{figure}[htb]
   \centering
   \includegraphics[width=.9\textwidth]{./../summary_plot_shap_all_bluebirds.pdf}
-  \caption{Summary of the main contributing workers for the BlueBirds dataset using Shapley values. Left: Worker $0$ has the highest contribution to the final label -- either for class $0$ or $1$, followed by worker $15$. Then, worker $36$ has better identification for class $1$ than class $0$. Right: Average impact of each worker on the final predicted label by the XGBOOST classifier. This worker's contribution scalar value -- used in \Cref{alg:shap} weight $W_{j,:}$ -- does not allow to differentiate between classes.}
+  \caption{Summary of the main contributing workers for the BlueBirds dataset using Shapley values. Left: Worker $34$ has the highest contribution to the final label -- either for class $0$ or $1$, followed by worker $31$. Worker $18$ has better identification for class $1$ than class $0$. Right: Average impact of each worker on the final predicted label by the XGBOOST classifier. This worker's contribution scalar value -- used in \Cref{alg:shap} weight $W_{j,:}$ -- does not allow to differentiate between classes.}
   \label{fig:shap_bluebirds}
 \end{figure}
 
 Using the Shapley values as workers' contribution, we can also provide more information on the workers' reliability.
 Let us explore the BlueBirds' dataset Shapley weights as an example.
-From \Cref{fig:shap_bluebirds}, we see that worker $0$ has the best overall contribution to the final label.
+From \Cref{fig:shap_bluebirds}, we see that worker $34$ has the best overall contribution to the final label.
 Note that this order of contribution given by Shapley values is in agreement with the accuracy of the workers even though Shapley values are not directly linked to the accuracy of a model.
 Indeed, as we know the ground truth, we can compute the accuracy of each worker.
-The accuracy of worker $0$ is $0.80$, worker $15$ is $0.73$ -- the two main workers contributing to the final aggregation -- and worker $10$ is $0.5$ (random answers).
+The accuracy of worker $0$ is $0.80$, worker $34$ is $0.79$ and worker $33$ is $0.44$ (random answers).
 The worker $22$ -- not represented in \Cref{fig:shap_bluebirds} as they are not a main contributor -- has an accuracy of $0.42$ -- worse than a random guess -- and an average absolute contribution of $0.03$ to the final label. This worker is indeed not contributing to the final label given the poor quality of their answers.
 
-Worker $15$ is the second-best contributor, and worker $36$ has a better identification for class $1$ than class $0$.
+Worker $18$ has a better identification for class $1$ than class $0$.
 However, as we use a single scalar value that is class-blind in \Cref{alg:shap} to aggregate the label in the WMV, this asymmetrical contribution is not taken into account.
 This is a limitation of the current Shapley label aggregation strategy.
-
 
 \section{Conclusion}
 \label{sec:conclusion}
