@@ -126,7 +126,7 @@ We detail below popular label aggregation strategies that fit into this framewor
       \text{with}\quad W_{j,:} = \left(\frac{1}{|\{y_{i'}^{(j)}\}_{i'}|} \sum_{i'=1}^{n_{\mathrm{task}}} \mathds{1}\left(y_{i'}^{(j)} = \hat{y}_{i'}^\text{MV}\right)\right)\mathbf{1}_{K}\enspace.
     \end{equation}
     It allows us to instantiate a weight that can vary for each worker (but not per task) and it usually improves on the MV strategy.
-    \item ZBS \citep{CrowdKit2023}: The Zero-Based Skill aggregation is a gradient descent (GD)-based version of the WAWA strategy.
+    \item ZBS: The Zero-Based Skill aggregation is a gradient descent (GD)-based version of the WAWA strategy.
     First, the labels are initialized using the MV strategy. Then, a descent step is performed on the weights to minimize the squared error between the current worker's weight and the weight assigned by the WAWA strategy. Finally, the aggregated labels are recomputed using the WMV strategy. This loop is repeated until convergence.
     \begin{algorithm}
       \caption{Zero Based Skill algorithm.}
@@ -273,7 +273,7 @@ And, at the same time, it can identify which workers are not contributing to the
 To compute Shapley values, we use the \texttt{Shap} library \citep{lundberg2017unified}.
 We choose an XGBOOST classifier \citep{chen2016xgboost} as the classifier $f$.
 In practice, the value function $\nu_{x,f}$ evaluated at a set $S\subseteq [n_\texttt{worker}]$ defined in \Cref{eq:nu} is estimated using the \texttt{TreeSHAP} algorithm \citep{lundberg2018consistent}.
-Label aggregation strategies are implemented in Python using the \texttt{crowd-kit} \citep{CrowdKit2023} or \texttt{peerannot} \citep{peerannot} libraries.
+Label aggregation strategies are implemented in Python using the \texttt{crowd-kit}\footnote{\url{https://github.com/Toloka/crowd-kit}} or \texttt{peerannot} \citep{peerannot} libraries.
 The XGBOOST classifier is known to have an extensive number of hyperparameters to tune.
 To choose them, we first use the \texttt{optuna} \citep{optuna} library to tune over a $3$-fold cross-validation of best hyperparameters for the set of tasks and label $\{(x_i, \hat{y}_i^0)_{i\in [n_\texttt{task}]}\}$.
 This random search includes the trees' depth, learning rate, the number of trees, the minimum child weight, the subsampling proportion and regularization parameter. These best parameters are then used in \Cref{alg:shap} to iteratively train the XGBOOST model with the current label estimates. Note that this hyperparameter search can be costly in computation time.
