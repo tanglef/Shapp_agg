@@ -159,7 +159,7 @@ We detail below popular label aggregation strategies that fit into this framewor
   This reliability can be estimated by solving a rank-one matrix completion problem defined as:
   \[\mathbb{E}\left[\frac{K}{K-1}C - \frac{1}{K-1}\mathds{1}\mathds{1}^\top\right]=ss^\top \enspace,\]
   where $C$ is the covariance matrix of the workers' answers.
-  More precisely, given two workers $j,j' \in [n_\texttt{worker}]$, the covariance between them is $C_{j,j'} = \frac{1}{N_{j,j'}}\sum_{i=1}^{n_\texttt{task}} \mathds{1}(y_i^{(j)}=y_i^{(j')})$, with $N_{j,j'}$ the number of tasks in common: $N_{j,j'}=|\{i \in [n_\texttt{task}] |j,j'\in\mathcal{A}(x_i)\}|$. The final label is a weighted majority vote:
+  More precisely, given two workers $j,j' \in [n_\texttt{worker}]$, the covariance between them is \[C_{j,j'} = \frac{1}{N_{j,j'}}\sum_{i=1}^{n_\texttt{task}} \mathds{1}(y_i^{(j)}=y_i^{(j')})\enspace,\] with $N_{j,j'}$ the number of tasks in common: $N_{j,j'}=|\{i \in [n_\texttt{task}] |j,j'\in\mathcal{A}(x_i)\}|$. The final label is a weighted majority vote:
   \begin{equation}
     \hat y_i^{\text{M-MSR}} = \mathrm{WMV}(i, W)\quad \text{with}\quad W_{j,k}=\log\frac{(K-1)p_j}{1-p_j}\enspace,
   \end{equation}
@@ -199,7 +199,7 @@ Note that depending on the strategy, the weights $W_{j,k}$ might not be upper-bo
 Indeed, the KOS strategy does not have an upper bound on the weights for instance.
 If the weights are not upper-bounded, the more a worker answers following other workers, the more weight they will accumulate.
 In \Cref{fig:weights_by_strat} we show how each strategy leads to different weights and scales.
-The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sec:results}.
+The weights are computed for the BlueBirds dataset \citep{WelinderEtal10b} presented in more detail in \Cref{sub:metrics}.
 
 \begin{figure}[htbp]
   \centering
@@ -279,6 +279,7 @@ To choose them, we first use the \texttt{optuna} \citep{optuna} library to tune 
 This random search includes the trees' depth, learning rate, the number of trees, the minimum child weight, the subsampling proportion and regularization parameter. These best parameters are then used in \Cref{alg:shap} to iteratively train the XGBOOST model with the current label estimates. Note that this hyperparameter search can be costly in computation time.
 
 \subsection{Evaluation metrics}
+\label{sub:metrics}
 
 We evaluate the performance of the Shapley label aggregation strategy using the accuracy and the F1 score.
 More precisely, each of the real datasets considered provides a -- partially known -- ground truth.
